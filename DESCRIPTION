@@ -1,0 +1,15 @@
+Package: rba
+Type: Package
+Title: Return-based Analysis
+Version: 0.1
+Date: 2014-07-16
+Author: Daniel Krizian <daniel.krizian@gmail.com>
+Maintainer: Daniel Krizian <daniel.krizian@gmail.com>
+Description: 
+License: TBD
+Depends:
+    data.table (>= 1.8.11)
+Imports:
+Collate:
+    'Returns.R'
+Repository: GitHub <github.com/danielkrizian/strategery>
