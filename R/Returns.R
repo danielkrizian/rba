@@ -1,0 +1,166 @@
+#' Construct returns object
+#'
+#' @rdname returns
+#' @export returns
+returns <- function(data, col, benchmark=NULL) {
+  r = Returns$new(data=data)
+  return(r)
+}
+
+#' returns list of column names representing id, time, value
+detect_cols = function(data){
+
+  timeBased = function(x) {
+    if (!any(sapply(c("Date", "POSIXt", "chron",
+                      "dates", "times",
+                      "timeDate", "yearmon",
+                      "yearqtr", "xtime"), function(xx) inherits(x, xx)))) {
+      FALSE
+    } else TRUE
+  }
+
+
+}
+
+Returns = setRefClass('Returns',
+                      fields= list(data="data.table",
+                                   id="character",
+                                   time="character",
+                                   value="character",
+                                   .freq="character",
+                                   select="character",
+                                   period="Date",
+                                   benchmarks="character"),
+
+                      methods = list(
+
+  Indicator.initialize <- function(..., data=data.table(),
+                                   col=character(),
+                                   id.col=character(),
+                                   time.col=character()) {
+    callSuper(...)
+
+    if(!length(data))
+      return(.self)
+
+
+
+    # validating/setting key
+    k = key(data)
+    if(length(k) < 2) {
+      warning("No/incomplete key found in the data.")
+      nm = names(data)
+      tb = sapply(data, timeBased)
+      if(!length(tb))
+        stop("Indicator data must contain timeBased column.")
+
+      if(length(k)==1) {
+        if(any(k %in% tb)) {
+          id.col = ifelse(length(id.col), id.col, nm[1])
+          time.col = ifelse(length(time.col), time.col, tail(k %in% tb, 1))
+        } else {
+          id.col = ifelse(length(id.col), id.col, k)
+          time.col = ifelse(length(time.col), time.col, names(tb)[tb][1])
+        }
+        warning("Only one-column key, (", k,  "), found in the data. If you
+intended to create an univariate indicator, create new id column containing
+series name and include it in the key, together with time column. Setting keys
+                automagically now:")
+      }
+      if(length(k)==0) {
+        id.col = ifelse(length(id.col), id.col, names(tb)[!tb][1])
+        time.col = ifelse(length(time.col), time.col, names(tb)[tb][1])
+      }
+      setkeyv(data, c(id.col, time.col))
+      warning("Set (", key(data), ") as key")
+    }
+
+    if(missing(col) & length(key(data)) & length(names(data))) {
+      col=setdiff(names(data),key(data))
+    }
+
+    .self$data <- data
+    if(length(id.col) > 1)   # TODO: Multi-column indicator ids
+      stop("Multi-column ids not supported yet")
+    .self$.id <- ifelse(length(id.col), id.col, key(data)[-length(key(data))] )
+    .self$.time <- ifelse(length(time.col), time.col, key(data)[length(key(data))])
+
+      .self$.col <- col
+
+    return(.self)
+  },
+
+  calcAlpha = function(annualize=T) {
+    # TODO(dk): finalize Returns.alpha. Signature: benchmark data.table, Rf data.table
+    Rf=0
+    data[, list(Alpha=alpha(Return, Benchmark, Rf)), by=Instrument]
+  },
+
+  calendar = function(what=c("MTD", "YTD", "3M", "6M", "years")){
+    freq <<- 12L; warning("Freq fixed at 12 in Returns.calendar. TODO")
+    years <- data[, list(Return=prod(1+Return)-1), by=list(Instrument, Year=year(Date))]
+    years <- dcast.data.table(years, Instrument ~ Year)
+    all <- data[, list("Total (ann.)"=prod(1+Return)^(freq/.N)-1),keyby="Instrument"]
+    out <- merge(all, years)
+    return(out)
+  },
+
+  correlation=function(with="Benchmark"){
+    if(identical(with,"Benchmark"))
+      data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
+  },
+
+  plot <- function(drawdowns=T) {
+    datacols=c(.id, .time, .self$index)
+    if(drawdowns)
+      datacols = c(datacols, .self$drawdowns)
+    x = data[, datacols, with=FALSE]
+    x = data.table:::melt.data.table(x, id.vars=c("Instrument","Date"))
+
+    p <- ggplot(x, aes(x=Date, y=value, colour=Instrument)) + geom_line() +
+      #   scale_y_continuous(trans=log10_trans())
+      # p +
+      facet_grid(variable ~ ., scales="free_y") +
+      scale_x_date(breaks=pretty_breaks(n=10), minor_breaks="year", labels=date_format("%Y")) + # scale_x_date(breaks=number_ticks(7), labels=date_format("%Y"))
+      scale_y_continuous(labels = percent_format()) +
+      coord_trans(y="log1p") +
+      #
+      theme_economist_white(gray_bg=FALSE) +
+      scale_colour_economist() +
+      xlab("") + ylab("Cumulative Performance (Log scale)")
+
+    g = ggplotGrob(p)
+    panels = which(sapply(g[["heights"]], "attr", "unit") == "null")
+    g[["heights"]][panels] = list(unit(12, "cm"), unit(3, "cm"))
+    dev.off()
+    grid.draw(g)
+  },
+
+  summary=function(weights=NULL) {
+
+    ann=252
+    compound=T
+    Return = as.name(.col)
+
+    by= if(is.null(weights)) "Instrument" else NULL
+
+    data[, Equity:= cumprod(1+eval(Return)), by=Instrument]
+    data[, Drawdown:= Equity / cummax(Equity) - 1, by=Instrument]
+    dd <- data[, summary.drawdowns(Drawdown, Date), by=Instrument]
+
+    return(data[,list(
+      "CAGR"=annualized(eval(Return), ann=ann, compound=compound)
+      , "Total Return"=cumulative(eval(Return), compound=compound)
+      , "Sharpe"=sharpe(eval(Return), Rf=0, ann=ann)
+      , "Volatility"=sigma(eval(Return), ann=ann)
+      , "R2"=r2(cumprod(1+eval(Return)))
+      , "DVR"= dvr(eval(Return), Rf=0, ann=ann) # dvr(Return)
+      , "MAR" = mar(eval(Return), ann=ann)
+      , "Max Drawdown"= maxdd(eval(Return))
+      , "Average Drawdown"= mean(dd$Depth) #avgdd(Return)
+      , "Average Drawdown Length" = mean(dd$Length)
+    )
+    , by=by])
+  })
+)
+
