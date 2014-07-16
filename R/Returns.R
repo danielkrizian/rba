@@ -2,9 +2,26 @@
 #'
 #' @rdname returns
 #' @export returns
-returns <- function(data, col, benchmark=NULL) {
-  r = Returns$new(data=data)
+returns <- function(data, as.prices=FALSE, use.cols=NULL, benchmark=NULL) {
+  
+  data = data[, use.cols, with=FALSE]
+  cols = detect_cols(data)
+    
+  if(as.prices) {
+    
+    # calc
+  }
+  
+  r = Returns$new(data=data,
+                  id.col=cols$id.col[1],
+                  time.col=cols$time.col[1],
+                  val.col=cols$val[1])
   return(r)
+}
+
+calc_returns <- function(data) {
+  require(quantmod)
+  data[,Price:=getPrice(data)]
 }
 
 #' returns list of column names representing id, time, value
@@ -18,15 +35,35 @@ detect_cols = function(data){
       FALSE
     } else TRUE
   }
+  
+  get_rated_col = function(data, score) {
+    score = as.numeric(score)
+    top = names(data)[score == max(score)]
+  }
 
+  inkey = names(data) %in% key(data)
+  ischar = vapply(data, is.character, 1, USE.NAMES=F)
+  isfac = vapply(data, is.factor, 1, USE.NAMES=F)
+  istimebased= vapply(data, timeBased, 1, USE.NAMES=F)
+  isnumeric = vapply(data, is.numeric, 1, USE.NAMES=F)
+  isinteger = vapply(data, is.integer, 1, USE.NAMES=F)
+  isreturn = vapply(names(data), grepl, 1, USE.NAMES=F, pattern="ret", 
+                    ignore.case=TRUE)
+  
+  id.col = get_rated_col(data, inkey + ischar + isfac + 0.5*isinteger)
+  time.col = get_rated_col(data, inkey + istimebased)
+  val.col = get_rated_col(data, 
+                          score= -inkey - istimebased - ischar + 
+                            isnumeric + 5*isreturn)
 
+  return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
 
 Returns = setRefClass('Returns',
                       fields= list(data="data.table",
-                                   id="character",
-                                   time="character",
-                                   value="character",
+                                   .id="character",
+                                   .time="character",
+                                   .value="character",
                                    .freq="character",
                                    select="character",
                                    period="Date",
@@ -34,59 +71,18 @@ Returns = setRefClass('Returns',
 
                       methods = list(
 
-  Indicator.initialize <- function(..., data=data.table(),
-                                   col=character(),
-                                   id.col=character(),
-                                   time.col=character()) {
+  initialize = function(..., data=data.table(),
+                         val.col=character(),
+                         id.col=character(),
+                         time.col=character()) {
     callSuper(...)
-
+    
     if(!length(data))
       return(.self)
-
-
-
-    # validating/setting key
-    k = key(data)
-    if(length(k) < 2) {
-      warning("No/incomplete key found in the data.")
-      nm = names(data)
-      tb = sapply(data, timeBased)
-      if(!length(tb))
-        stop("Indicator data must contain timeBased column.")
-
-      if(length(k)==1) {
-        if(any(k %in% tb)) {
-          id.col = ifelse(length(id.col), id.col, nm[1])
-          time.col = ifelse(length(time.col), time.col, tail(k %in% tb, 1))
-        } else {
-          id.col = ifelse(length(id.col), id.col, k)
-          time.col = ifelse(length(time.col), time.col, names(tb)[tb][1])
-        }
-        warning("Only one-column key, (", k,  "), found in the data. If you
-intended to create an univariate indicator, create new id column containing
-series name and include it in the key, together with time column. Setting keys
-                automagically now:")
-      }
-      if(length(k)==0) {
-        id.col = ifelse(length(id.col), id.col, names(tb)[!tb][1])
-        time.col = ifelse(length(time.col), time.col, names(tb)[tb][1])
-      }
-      setkeyv(data, c(id.col, time.col))
-      warning("Set (", key(data), ") as key")
-    }
-
-    if(missing(col) & length(key(data)) & length(names(data))) {
-      col=setdiff(names(data),key(data))
-    }
-
     .self$data <- data
-    if(length(id.col) > 1)   # TODO: Multi-column indicator ids
-      stop("Multi-column ids not supported yet")
-    .self$.id <- ifelse(length(id.col), id.col, key(data)[-length(key(data))] )
-    .self$.time <- ifelse(length(time.col), time.col, key(data)[length(key(data))])
-
-      .self$.col <- col
-
+    .self$.id <- id.col
+    .self$.time <- time.col
+    .self$.value <- val.col
     return(.self)
   },
 
@@ -97,7 +93,8 @@ series name and include it in the key, together with time column. Setting keys
   },
 
   calendar = function(what=c("MTD", "YTD", "3M", "6M", "years")){
-    freq <<- 12L; warning("Freq fixed at 12 in Returns.calendar. TODO")
+    freq = 12L
+    warning("Freq fixed at 12 in Returns.calendar. TODO")
     years <- data[, list(Return=prod(1+Return)-1), by=list(Instrument, Year=year(Date))]
     years <- dcast.data.table(years, Instrument ~ Year)
     all <- data[, list("Total (ann.)"=prod(1+Return)^(freq/.N)-1),keyby="Instrument"]
@@ -105,12 +102,12 @@ series name and include it in the key, together with time column. Setting keys
     return(out)
   },
 
-  correlation=function(with="Benchmark"){
+  correlation = function(with="Benchmark"){
     if(identical(with,"Benchmark"))
       data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
   },
 
-  plot <- function(drawdowns=T) {
+  plot = function(drawdowns=T) {
     datacols=c(.id, .time, .self$index)
     if(drawdowns)
       datacols = c(datacols, .self$drawdowns)
@@ -136,7 +133,7 @@ series name and include it in the key, together with time column. Setting keys
     grid.draw(g)
   },
 
-  summary=function(weights=NULL) {
+  summary = function(weights=NULL) {
 
     ann=252
     compound=T
