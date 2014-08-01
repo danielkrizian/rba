@@ -1,91 +1,37 @@
+RoR <- pchange <- function(x, na.pad=T) {
+  RoR = diff.default(x)/x[-length(x)]
+  if(na.pad)
+    c(NA, RoR)
+  else
+    RoR
+}
+
+change <- function(x, na.pad=T) {
+  if(na.pad)
+    c(NA, diff.default(x))
+  else
+    diff.default(x)
+}
+
+
 #' Construct returns object
 #'
 #' @rdname returns
 #' @export returns
-returns <- function(data, as.prices=FALSE, use.cols=NULL, benchmark=NULL) {
-  
-  data = data[, use.cols, with=FALSE]
-  cols = detect_cols(data)
-    
-  if(as.prices) {
-    
-    # calc
-  }
-  
-  r = Returns$new(data=data,
-                  id.col=cols$id.col[1],
-                  time.col=cols$time.col[1],
-                  val.col=cols$val[1])
+returns <- function(x, col="Return", benchmark=NULL, ...) {  
+  r = Returns$new(data=x, col = col, benchmark = benchmark, ...)
   return(r)
 }
 
-calc_returns <- function(data) {
-  require(quantmod)
-  data[,Price:=getPrice(data)]
-}
-
-#' returns list of column names representing id, time, value
-detect_cols = function(data){
-
-  timeBased = function(x) {
-    if (!any(sapply(c("Date", "POSIXt", "chron",
-                      "dates", "times",
-                      "timeDate", "yearmon",
-                      "yearqtr", "xtime"), function(xx) inherits(x, xx)))) {
-      FALSE
-    } else TRUE
-  }
-  
-  get_rated_col = function(data, score) {
-    score = as.numeric(score)
-    top = names(data)[score == max(score)]
-  }
-
-  inkey = names(data) %in% key(data)
-  ischar = vapply(data, is.character, 1, USE.NAMES=F)
-  isfac = vapply(data, is.factor, 1, USE.NAMES=F)
-  istimebased= vapply(data, timeBased, 1, USE.NAMES=F)
-  isnumeric = vapply(data, is.numeric, 1, USE.NAMES=F)
-  isinteger = vapply(data, is.integer, 1, USE.NAMES=F)
-  isreturn = vapply(names(data), grepl, 1, USE.NAMES=F, pattern="ret", 
-                    ignore.case=TRUE)
-  
-  id.col = get_rated_col(data, inkey + ischar + isfac + 0.5*isinteger)
-  time.col = get_rated_col(data, inkey + istimebased)
-  val.col = get_rated_col(data, 
-                          score= -inkey - istimebased - ischar + 
-                            isnumeric + 5*isreturn)
-
-  return(list(id.col=id.col, time.col=time.col, val.col=val.col))
-}
-
-Returns = setRefClass('Returns',
-                      fields= list(data="data.table",
-                                   .id="character",
-                                   .time="character",
-                                   .value="character",
-                                   .freq="character",
-                                   select="character",
-                                   period="Date",
-                                   benchmarks="character"),
-
-                      methods = list(
-
-  initialize = function(..., data=data.table(),
-                         val.col=character(),
-                         id.col=character(),
-                         time.col=character()) {
-    callSuper(...)
-    
-    if(!length(data))
-      return(.self)
-    .self$data <- data
-    .self$.id <- id.col
-    .self$.time <- time.col
-    .self$.value <- val.col
-    return(.self)
+Returns <- R6Class('Returns',
+                   lock = FALSE,
+                   inherit = TimeSeries,
+                   public = list(benchmarks = NA,
+                                 
+  initialize = function(...) {
+    super$initialize(...)
   },
-
+  
   calcAlpha = function(annualize=T) {
     # TODO(dk): finalize Returns.alpha. Signature: benchmark data.table, Rf data.table
     Rf=0
