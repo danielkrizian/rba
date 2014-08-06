@@ -36,3 +36,14 @@ detect_cols = function(data){
   
   return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
+
+#' Detect returns data
+#' 
+#' Returns TRUE/FALSE, with AIC of the distribution fit as an attribute 
+#' Stub only, TODO: finalize
+like.returns <- function(x){
+  library(MASS)
+  fitdistr(Rfunds_all$Performance, "normal")
+  descdist(Rfunds_all$Performance)
+  structure(TRUE, AIC=1)
+}
