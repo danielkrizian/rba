@@ -9,7 +9,7 @@ Prices <- R6Class("Prices",
   
   returns = function() {
     expr = as.call(parse(text=paste0("pchange(", .value, ")")))[[1]]
-    require(quantmod) # TODO: remove quantmod dependency
+    library(quantmod) # TODO: remove quantmod dependency
     data[,Return:=eval(expr), by=.id] #TODO: optimize with .SDcols
     r = Returns$new(data=data,
                     id.col=.id,
@@ -38,8 +38,8 @@ OHLC <- R6Class("OHLC",
   },
   
   monthly = function() {
-    require(xts)
-    require(lubridate)
+    library(xts)
+    library(lubridate)
     data <<- data[, list(Date=last(eval(as.name(.time))), 
                          Open=first(eval(as.name(op.col))),
                          High=max(eval(as.name(hi.col))),
@@ -61,7 +61,7 @@ OHLC <- R6Class("OHLC",
   
   ClCl = function() {
     expr = as.call(parse(text="quantmod::ClCl(.SD)"))[[1]]
-    require(quantmod) # TODO: remove quantmod dependency
+    library(quantmod) # TODO: remove quantmod dependency
     data[,Return:=eval(expr), by=.id] #TODO: optimize with .SDcols
     r = Returns$new(data=data,
                     id.col=.id,

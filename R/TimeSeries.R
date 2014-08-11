@@ -1,3 +1,4 @@
+library(R6); library("data.table") # TODO: remove library("R6"); library("data.table")
 TimeSeries <- R6Class("TimeSeries",
                       private = list(.id=NA,
                                      .time=NA,
@@ -56,8 +57,8 @@ TimeSeries <- R6Class("TimeSeries",
   #   },
   
   monthly = function() {
-    require(xts)
-    require(lubridate)
+    library(xts)
+    library(lubridate)
     data <<- data[,.SD[endpoints(eval(as.name(.time)), on = "months")], by=.id]
     # find last day of a current month; e.g. turns 2013-11-29 (last BD) to 2013-11-30
     data[,c(.time):=floor_date(eval(as.name(.time)),"month")+months(1)-days(1)] 
