@@ -28,7 +28,9 @@ detect_cols = function(data){
   isreturn = vapply(names(data), grepl, 1, USE.NAMES=F, pattern="ret", 
                     ignore.case=TRUE)
   
-  id.col = get_rated_col(data, inkey + ischar + isfac + 0.5*isinteger, min=1)
+  id.col = get_rated_col(data, 
+                         - istimebased + inkey + ischar + isfac + 0.5*isinteger
+                         , min=1)
   time.col = get_rated_col(data, inkey + istimebased)
   val.col = get_rated_col(data, 
                           score= -inkey - istimebased - ischar + 
