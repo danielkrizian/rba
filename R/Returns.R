@@ -16,10 +16,11 @@ change <- function(x, na.pad=T) {
 
 #' Construct returns object
 #'
+#' Always coerced to wide data format
 #' @rdname returns
 #' @export returns
-returns <- function(x, col="Return", benchmark=NULL, ...) {  
-  r = Returns$new(data=x, col = col, benchmark = benchmark, ...)
+returns <- function(x, val.col=NULL, benchmark=NULL, ...) {
+  r = Returns$new(data=x, val.col = val.col, benchmark = benchmark, ...)
   return(r)
 }
 
@@ -30,6 +31,7 @@ Returns <- R6Class('Returns',
                                  
   initialize = function(...) {
     super$initialize(...)
+    private$coerce_wide()
   },
   
   calcAlpha = function(annualize=T) {
@@ -48,9 +50,19 @@ Returns <- R6Class('Returns',
     return(out)
   },
 
-  correlation = function(with="Benchmark"){
-    if(identical(with,"Benchmark"))
-      data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
+  cor = function(benchmark=FALSE){
+    if(benchmark){
+      # data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
+      stop("Implement cor benchmark option")
+    } else {
+      cor_mat = stats::cor(self$widedata, use="pairwise.complete.obs", 
+                           method="pearson")
+    }
+    return(cor_mat)
+  },
+  
+  mean = function() {
+    colMeans(data)
   },
 
   plot = function(drawdowns=T) {

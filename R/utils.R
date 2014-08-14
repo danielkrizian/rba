@@ -39,6 +39,18 @@ detect_cols = function(data){
   return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
 
+as.xts.data.table <- function(x, index.col){
+  if(missing(index.col))
+    stop("Must provide 'index.col' argument")
+  if(is.symbol(index.col))
+    index.col = deparse(substitute(index.col))
+  order.by = as.Date(as.character(x[[index.col]]))
+  x[, c(index.col):=NULL]
+  return(xts(x, order.by = order.by))
+}
+
+
+
 #' Detect returns data
 #' 
 #' Returns TRUE/FALSE, with AIC of the distribution fit as an attribute 

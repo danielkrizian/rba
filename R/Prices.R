@@ -1,4 +1,8 @@
+library(quantmod) # # TODO: remove quantmod dependency
 
+#' Prices is a class for representing price data
+#' 
+#' 
 Prices <- R6Class("Prices",
                   lock=FALSE,
                   inherit = TimeSeries,
@@ -8,13 +12,9 @@ Prices <- R6Class("Prices",
   },
   
   returns = function() {
-    expr = as.call(parse(text=paste0("pchange(", .value, ")")))[[1]]
-    library(quantmod) # TODO: remove quantmod dependency
-    data[,Return:=eval(expr), by=.id] #TODO: optimize with .SDcols
-    r = Returns$new(data=data,
-                    id.col=.id,
-                    time.col=.time,
-                    val.col="Return")
+    private$coerce_wide()
+    data = xts::diff.xts(self$widedata, na.pad=FALSE)
+    r = Returns$new(widedata=data)
     return(r)
   }
                   )
@@ -31,51 +31,69 @@ OHLC <- R6Class("OHLC",
   initialize = function(...) {
     super$initialize(...)
     args=list(...)
-    op.col <<- args$op.col
-    cl.col <<- args$cl.col
-    hi.col <<- args$hi.col
-    lo.col <<- args$lo.col
+    self$op.col = args$op.col
+    self$cl.col = args$cl.col
+    self$hi.col = args$hi.col
+    self$lo.col = args$lo.col
   },
   
+#   print = function() {
+#     message("implement print method for OHLC")
+#   },
+  
   monthly = function() {
-    library(xts)
-    library(lubridate)
-    data <<- data[, list(Date=last(eval(as.name(.time))), 
-                         Open=first(eval(as.name(op.col))),
-                         High=max(eval(as.name(hi.col))),
-                         Low=min(eval(as.name(lo.col))),
-                         Close=last(eval(as.name(cl.col)))),
-                  by=list(eval(as.name(.id)), 
-                          year(eval(as.name(.time))), 
-                          month(eval(as.name(.time))))]
-    setnames(data, "as.name", .id) # fixes bug above manually https://github.com/Rdatatable/data.table/issues/750
-    data <<- data[, list(eval(as.name(.id)), Date, Open, High, Low, Close)]
-    setkeyv(data, c(.id, "Date"))
-    op.col <<- "Open"
-    cl.col <<- "Close"
-    hi.col <<- "High"
-    lo.col <<- "Low"
-    .freq <<- 12L
+
+    if(private$wide) {
+      self$widedata = to.period(self$widedata, indexAt='yearmon', 
+                                name=NULL, OHLC=TRUE)
+    } else {
+      library(xts)
+      library(lubridate)
+      data = self$talldata
+      data = data[, list(Date=as.yearmon(last(eval(as.name(private$time)))), 
+                         Open=first(eval(as.name(self$op.col))),
+                         High=max(eval(as.name(self$hi.col))),
+                         Low=min(eval(as.name(self$lo.col))),
+                         Close=last(eval(as.name(self$cl.col)))),
+                  by=list(eval(as.name(private$id)), 
+                          year(eval(as.name(private$time))), 
+                          month(eval(as.name(private$time))))]
+      # fixes bug above manually https://github.com/Rdatatable/data.table/issues/750
+      setnames(data, "as.name", private$id) 
+      data = data[, list(eval(as.name(private$id)), Date, Open, High, Low, Close)]
+      setkeyv(data, c(private$id, "Date"))
+      self$talldata = data
+    }
+    self$op.col = "Open"
+    self$cl.col = "Close"
+    self$hi.col = "High"
+    self$lo.col = "Low"
+    self$freq = 12L
     return(self)
   },
   
   ClCl = function() {
-    expr = as.call(parse(text="quantmod::ClCl(.SD)"))[[1]]
-    library(quantmod) # TODO: remove quantmod dependency
-    data[,Return:=eval(expr), by=.id] #TODO: optimize with .SDcols
-    r = Returns$new(data=data,
-                    id.col=.id,
-                    time.col=.time,
-                    val.col="Return")
-    return(r)
+    if(private$wide){
+      self$widedata = quantmod::ClCl(self$widedata)
+      colnames(self$widedata) = "Return"
+    } else {
+      expr = as.call(parse(text="quantmod::ClCl(.SD)"))[[1]]
+      self$talldata[,Return:=eval(expr), by=c(private$id)]
+      r = Returns$new(talldata=self$talldata, id.col=private$id, 
+                      time.col=private$time, val.col="Return")
+    # r$private$coerce_wide()
+      return(r)
+    }
   },
   
   returns = function() {
-    return(ClCl())
+    return(self$ClCl())
   }
                 )
 )
 
+
+#' OHLC is a class for representing OHLCV data
 ohlc <- function(x, val.cols=NULL) {
   o = OHLC$new(data=x,
                op.col=colnames(x)[grep("op", colnames(x), ignore.case=T)],
