@@ -49,20 +49,24 @@ Returns <- R6Class('Returns',
     out <- merge(all, years)
     return(out)
   },
+  
+  cov = function(benchmark=FALSE, use='complete.obs', method='pearson'){
+      cov_mat = stats::cov(self$widedata, use=use, method=method)
+    return(cov_mat)
+  },
 
-  cor = function(benchmark=FALSE){
+  cor = function(benchmark=FALSE, use='complete.obs', method='pearson'){
     if(benchmark){
       # data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
       stop("Implement cor benchmark option")
     } else {
-      cor_mat = stats::cor(self$widedata, use="pairwise.complete.obs", 
-                           method="pearson")
+      cor_mat = stats::cor(self$widedata, use=use, method=method)
     }
     return(cor_mat)
   },
   
   mean = function() {
-    colMeans(data)
+    colMeans(self$widedata)
   },
 
   plot = function(drawdowns=T) {
