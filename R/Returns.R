@@ -26,12 +26,12 @@ returns <- function(x, val.col=NULL, benchmark=NULL, ...) {
 
 Returns <- R6Class('Returns',
                    lock = FALSE,
-                   inherit = TimeSeries,
-                   public = list(benchmarks = NA,
+                   inherit = Historical,
+                   public = list(
+                     benchmarks = NA,
                                  
   initialize = function(...) {
     super$initialize(...)
-    private$coerce_wide()
   },
   
   calcAlpha = function(annualize=T) {
