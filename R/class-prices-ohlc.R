@@ -13,6 +13,20 @@ Prices <- R6Class("Prices",
     data = xts::diff.xts(x, na.pad=FALSE)
     r = Returns$new(data=data)
     return(r)
+  }, 
+  
+  monthly = function() {
+    # find last day of a current month; e.g. turns 2013-11-29 (last BD) to 2013-11-30
+    x = self$data
+    self$data = to.period(x, period="months", indexAt='yearmon',
+                          name=NULL, OHLC=FALSE)
+    self$freq = 12L
+    return(self)
+  },
+  
+  print = function (){
+    print("Prices")
+    super$print()
   }
                   )
 )
@@ -29,10 +43,6 @@ OHLC <- R6Class("OHLC",
   initialize = function(...) {
     super$initialize(...)
   },
-  
-#   print = function() {
-#     message("implement print method for OHLC")
-#   },
   
   monthly = function() {
 
@@ -67,8 +77,8 @@ ohlc <- function(x, val.cols=NULL) {
   return(o)
 }
 
-prices <- function(x, val.col, ...) {
-  p = Prices$new(data=x, val.col=val.col, ...)
+prices <- function(x, ...) {
+  p = Prices$new(data=x, ...)
   return(p)
 }
                                      

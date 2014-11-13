@@ -4,20 +4,39 @@ Historical <- R6Class("Historical",
                       public = list(data = xts(),
                                     freq=NA,
   initialize = function(data) {
-    self$data = data
+    self$data = as.historical(data)
     return(self)
   },
   
-  monthly = function() {
-    # find last day of a current month; e.g. turns 2013-11-29 (last BD) to 2013-11-30
-    x = self$data
-    self$data = to.period(x, period="months", indexAt='yearmon',
-                              name=NULL, OHLC=FALSE)
-    self$freq = 12L
-    return(self)
+  print = function(){
+    print(head(self$data))
+    print(tail(self$data))
   }
                       )
 )
+
+as.historical = function(x){
+  UseMethod("as.historical")
+}
+
+as.historical.data.table = function(x){
+  cols = detect_cols(x)
+  id.col = cols$id.col[1]
+  time.col = cols$time.col[1]
+  val.col = cols$val.col
+  use.cols = c(id.col, time.col, val.col)
+  if(!is.null(id.col)) {
+    x = dcast.data.table(x[, use.cols, with=FALSE], 
+                         formula = as.formula(paste0(time.col, "~", 
+                                                     id.col )))
+    message("Tall dataset converted to wide format.")
+  }
+  order.by = x[[time.col]]   # TODO: accommodate IDate and yearmon
+  if(inherits(order.by, "IDate")) order.by = as.Date(as.character(order.by))
+  xts(x = x[, val.col, with=FALSE],  order.by=order.by)
+}
+
+as.historical.xts = function(x) x
 
 #   compress = function(rule, how="last") {
 # #       # grepl(" month | months | month| months|month |months |month|months",rule, ignore.case=TRUE)

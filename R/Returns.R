@@ -1,9 +1,5 @@
 RoR <- pchange <- function(x, na.pad=T) {
-  RoR = diff.default(x)/x[-length(x)]
-  if(na.pad)
-    c(NA, RoR)
-  else
-    RoR
+  diff(x, na.pad=na.pad)/tail(x, -1)
 }
 
 change <- function(x, na.pad=T) {
@@ -13,14 +9,18 @@ change <- function(x, na.pad=T) {
     diff.default(x)
 }
 
+returns = function(x){
+  UseMethod("returns")
+}
 
 #' Construct returns object
 #'
 #' Always coerced to wide data format
 #' @rdname returns
 #' @export returns
-returns <- function(x, val.col=NULL, benchmark=NULL, ...) {
-  r = Returns$new(data=x, val.col = val.col, benchmark = benchmark, ...)
+returns.Prices <- function(x, val.col=NULL, benchmarks=NULL, ...) {
+  data = RoR(x$data, na.pad=F)
+  r = Returns$new(data=data, benchmarks = benchmarks, ...)
   return(r)
 }
 
@@ -30,7 +30,9 @@ Returns <- R6Class('Returns',
                    public = list(
                      benchmarks = NA,
                                  
-  initialize = function(...) {
+  initialize = function(..., benchmarks) {
+    if(!is.null(benchmarks))
+      self$benchmarks = benchmarks
     super$initialize(...)
   },
   
