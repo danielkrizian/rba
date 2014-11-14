@@ -3,29 +3,29 @@ Sys.setenv(TZ="UTC") # options("xts_check_TZ"). print.xts causes xts:::check.TZ
 OHLCV = readRDS("data/OHLCV.rds")
 PRICES_wide = dcast.data.table(OHLCV[,list(Instrument, Date ,Close)], 
                                formula = Date ~ Instrument )
-
+RETURNS_wide = dcast.data.table(OHLCV[,list(Date,
+                                            Returns=pch(Close, na.pad=T)), 
+                                      by=Instrument], 
+                               formula = Date ~ Instrument )
 # detect tall/wide formats
 # detect_cols(OHLCV)
 # detect_cols(PRICES_wide)
 
+#### construction ####
 # Monthly returns from OHLCV bars, calculated from Close to Close by default
 # R = ohlc(OHLCV)$monthly()$returns()
 
-# monthly returns from Close prices
-prices(OHLCV, val.col="Close")$monthly()$returns()
-
-# construct from tall data format, specifying column of return values
-returns(R$talldata, col="Return")
+prices(OHLCV, val.col="Close")$monthly()$returns() # monthly returns from Close prices
+returns(RETURNS_wide)
 
 
-ohlc(OHLCV)$monthly() # monthly OHLC bars
-ohlc(OHLCV)$monthly()$returns()$cor() # monthly return correlations 
+# ohlc(OHLCV)$monthly() # monthly OHLC bars
+# ohlc(OHLCV)$monthly()$returns()$cor() # monthly return correlations 
+# 
+# ohlc(OHLCV)$monthly()$returns()$calendar()
 
-ohlc(OHLCV)$monthly()$returns()$calendar()
-
-#
+# 
 p = prices(PRICES_wide)$monthly()
-
-performance(p)
+performance(p)$prices
 
 View(as.historical(PRICES_wide))

@@ -49,7 +49,19 @@ as.xts.data.table <- function(x, index.col){
   return(xts(x, order.by = order.by))
 }
 
+##### percent change ####
 
+pch <- function(x, na.pad = T) UseMethod("pch")
+
+pch.default <- function(x, na.pad = T) {
+  pch = diff.default(x)/x[2:length(x)]
+  if(na.pad)
+    c(NA, pch)
+}
+
+pch.xts <- function(x, na.pad = T) {
+  diff.xts(x, na.pad=na.pad)/tail(x, -1)
+}
 
 #' Detect returns data
 #' 
@@ -57,7 +69,7 @@ as.xts.data.table <- function(x, index.col){
 #' Stub only, TODO: finalize
 like.returns <- function(x){
   library(MASS)
-  fitdistr(Rfunds_all$Performance, "normal")
-  descdist(Rfunds_all$Performance)
+  fitdistr(x$Performance, "normal")
+  descdist(x$Performance)
   structure(TRUE, AIC=1)
 }

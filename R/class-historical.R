@@ -3,8 +3,11 @@ Historical <- R6Class("Historical",
                       
                       public = list(data = xts(),
                                     freq=NA,
+                                    last=NA,
   initialize = function(data) {
-    self$data = as.historical(data)
+    data = as.historical(data)
+    self$data = data
+    self$last = index(data[dim(data)[1]])
     return(self)
   },
   

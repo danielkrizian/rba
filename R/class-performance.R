@@ -1,11 +1,20 @@
 library(R6); library(xts) 
 Performance <- R6Class("Performance",
-                      public = list(ohlc = NA,
-                                    prices = NA,
-                                    returns = NA,
-                                    benchmarks = NA,
-                                    
-  summary = function()
+                       public = list(ohlc = NA,
+                                     prices = NA,
+                                     returns = NA,
+                                     benchmarks = NA,
+  initialize = function(..., benchmarks = NULL) {
+    if(!is.null(benchmarks))
+      self$benchmarks = benchmarks  
+    return(self)
+  },
+  
+  wtd = function(){
+  },
+        
+  summary = function(){}
+                      )
 )
 
 performance = function(x){
