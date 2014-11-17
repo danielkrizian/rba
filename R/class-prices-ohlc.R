@@ -10,7 +10,7 @@ Prices <- R6Class("Prices",
   
   returns = function() {
     x = self$data
-    data = xts::diff.xts(x, na.pad=FALSE)
+    data = pch.xts(x, na.pad=TRUE)
     r = Returns$new(data=data)
     return(r)
   }, 
@@ -18,7 +18,7 @@ Prices <- R6Class("Prices",
   monthly = function() {
     # find last day of a current month; e.g. turns 2013-11-29 (last BD) to 2013-11-30
     x = self$data
-    self$data = to.period(x, period="months", indexAt='yearmon',
+    self$data = to.period(x, period="months", indexAt='endof',
                           name=NULL, OHLC=FALSE)
     self$freq = 12L
     return(self)
@@ -47,7 +47,7 @@ OHLC <- R6Class("OHLC",
   monthly = function() {
 
     x = self$data
-    self$data = to.period(x, indexAt='yearmon', name=NULL, OHLC=TRUE)
+    self$data = to.period(x, indexAt='endof', name=NULL, OHLC=TRUE)
     self$freq = 12L
     return(self)
   },

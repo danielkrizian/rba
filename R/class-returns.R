@@ -27,6 +27,14 @@ Returns <- R6Class('Returns',
                        super$initialize(...)
                      },
                      
+                     perf_index = function(base = 100){
+                       # todo: speed-up parallel colwise cumprod with leading NAs
+                       # current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
+                       x = self$data
+                       out = xtsapply(x, cumProd, base=base)
+                       out
+                     },
+                     
                      calcAlpha = function(annualize=T) {
                        # TODO(dk): finalize Returns.alpha. Signature: benchmark data.table, Rf data.table
                        Rf=0

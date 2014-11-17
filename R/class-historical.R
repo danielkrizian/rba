@@ -2,8 +2,8 @@ library(R6); library("data.table"); library(xts) # TODO: remove library headers
 Historical <- R6Class("Historical",
                       
                       public = list(data = xts(),
-                                    freq=NA,
-                                    last=NA,
+                                    freq = NA,
+                                    last = NA,
   initialize = function(data) {
     data = as.historical(data)
     self$data = data
@@ -34,8 +34,7 @@ as.historical.data.table = function(x){
                                                      id.col )))
     message("Tall dataset converted to wide format.")
   }
-  order.by = x[[time.col]]   # TODO: accommodate IDate and yearmon
-  if(inherits(order.by, "IDate")) order.by = as.Date(as.character(order.by))
+  order.by = as.POSIXct(x[[time.col]])
   xts(x = x[, val.col, with=FALSE],  order.by=order.by)
 }
 

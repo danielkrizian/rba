@@ -1,3 +1,9 @@
+# todo: speed-up parallel colwise apply
+# current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
+xtsapply <- function(x, FUN, ...) {
+  "[<-"(x, , vapply(x, FUN,FUN.VALUE = numeric(nrow(x)), ...=...))
+}
+
 #' returns list of column names representing id, time, value
 detect_cols = function(data){
   
@@ -39,14 +45,15 @@ detect_cols = function(data){
   return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
 
-as.xts.data.table <- function(x, index.col){
-  if(missing(index.col))
-    stop("Must provide 'index.col' argument")
+as.xts.data.table <- function(x, index.col=NULL){
+  if(is.null(index.col))
+    index.col = detect_cols(x)$time.col
   if(is.symbol(index.col))
     index.col = deparse(substitute(index.col))
   order.by = as.Date(as.character(x[[index.col]]))
   x[, c(index.col):=NULL]
-  return(xts(x, order.by = order.by))
+  out = xts(x, order.by = order.by)
+  return(out)
 }
 
 ##### percent change ####
@@ -57,10 +64,19 @@ pch.default <- function(x, na.pad = T) {
   pch = diff.default(x)/x[2:length(x)]
   if(na.pad)
     c(NA, pch)
+  return(pch)
 }
 
 pch.xts <- function(x, na.pad = T) {
   diff.xts(x, na.pad=na.pad)/tail(x, -1)
+}
+
+cumProd = function(x, base) {
+  firstLeadNonNA = xts:::naCheck(x)$beg
+  x[!is.na(x)] <- base * cumprod( 1 + x[!is.na(x)] )
+  if(firstLeadNonNA > 0L)
+    x[firstLeadNonNA] = base
+  x
 }
 
 #' Detect returns data
