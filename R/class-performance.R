@@ -1,56 +1,42 @@
 library(R6); library(xts) 
 Performance <- R6Class("Performance",
                        inherit = Historical,
-                       public = list(ohlc = NA,
-                                     prices = NA,
-                                     returns = NA,
-                                     benchmarks = NA,
+                       private = list(ohlc=NA, prices=NA, returns=NA),
+                       active = list(
+  ohlc = function(value) {"TODO"},
+  prices = function(value) {
+    if(missing(value)) private$prices 
+    else {
+      private$prices = value
+      private$returns = value$returns()
+    }
+  },
+  returns = function(value){}
+                         
+                         ),
+  
+                       public = list(benchmarks = NA,
   initialize = function(benchmarks = NULL) {
     if(!is.null(benchmarks))
       self$benchmarks = benchmarks  
     return(self)
   },
   
-  forperiod =  function(subset){
-    p = self$prices
-    subperiod = coredata(p[subset])
-    performance_result = subperiod[NROW(subperiod), ]/subperiod[1, ] - 1
-  }
-  
-  mtd = function(){
-    prev.eom = self$last - days(day(self$last))
-    self$forperiod( paste(prev.eom, sep="::") )
-  },
-  
-  qtd = function(){
-    last = self$last
-    last = as.POSIXct("2014-01-03")
-    prev.eoq = 
-      c(1, 4, 7, 10)
-    year(last)
-    quarter
-    + quarter
-      3*(quarter(last)-1)
-    self$forperiod( paste(prev.eoq, sep="::") )
-  }
-  
-  ytd = function(){
-    prev.eoy = self$last - days(yday(self$last))
-    self$forperiod( paste(prev.eoy, sep="::") )
-  },
-  
-  l12m = function(){
-    ago.12m = self$last - months(12)
-    self$forperiod( paste(ago.12m, sep="::") )
-  },
-        
-  summary = function(){
+  cum =  function(subset=NULL){
     p = self$prices$data
-    l = self$last
-    
+    subperiod = if(missing(subset)) coredata(p) else coredata(p[subset])
+    performance_result = subperiod[NROW(subperiod), ]/subperiod[1, ] - 1
+  },
 
-    
+  summary = function(na.rm=T, annual=T){
+    l = self$last
+    returns = self$returns
     browser()
+    rbind("MTD"=self$cum(subset = paste(as.Date(cut(l,"month")) - 1, "::")),
+          "QTD"=self$cum(subset = paste(as.Date(cut(l,"quarter")) - 1, "::")),
+          "YTD"=self$cum(subset = paste(as.Date(cut(l,"year")) - 1, "::")),
+          "Last 12M"=self$cum(subset = paste(as.Date(l) - months(12), "::")),
+          "Vol (ann.)"=returns$measure( stdev, ann=returns$freq))
   }
                        )
 )
@@ -62,8 +48,6 @@ performance = function(x){
 performance.Prices = function(x, benchmarks=NULL) {
   p = Performance$new(benchmarks=benchmarks)
   p$prices = x
-  p$returns = x$returns()
-  p$last = x$last
   return(p)
 }
 

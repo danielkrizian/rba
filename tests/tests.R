@@ -1,7 +1,7 @@
 library(R6); library(data.table); library(xts)
 Sys.setenv(TZ="UTC") # options("xts_check_TZ"). print.xts causes xts:::check.TZ
 OHLCV = readRDS("data/OHLCV.rds")
-PRICES_wideod = dcast.data.table(OHLCV[,list(Instrument, Date ,Close)], 
+PRICES_wide = dcast.data.table(OHLCV[,list(Instrument, Date ,Close)], 
                                formula = Date ~ Instrument )
 RETURNS_wide = dcast.data.table(OHLCV[,list(Date,
                                             Returns=pch(Close, na.pad=F)), 
@@ -28,3 +28,4 @@ performance(p)$returns
 performance(p)$summary()
 
 
+msapply(p$data, min)

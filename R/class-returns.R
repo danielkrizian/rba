@@ -3,9 +3,9 @@ returns = function(x){
   UseMethod("returns")
 }
 
-returns.default <- function(x, ...) {
-  Returns$new(data=x, ...)
-}
+# returns.default <- function(x, ...) {
+#   Returns$new(data=x, ...)
+# }
 
 #' Construct returns object
 #'

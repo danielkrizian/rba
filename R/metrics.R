@@ -22,9 +22,11 @@ annualized <- function(x, ann=12, compound=F) {
 }
 
 ##### VOLATILITY ####################
-sigma <- volatility <- vol <- std <- stdev <- StDev <- function(x, ann=12) {
+
+sigma <- volatility <- vol <- std.default <- stdev <- StDev <- function(x, ann=12) {
   sqrt(ann) * sd(x)
 }
+
 
 tr <- truerange <- TR <- function(hi, lo, cl) {
   clag = c(NA, cl[-length(cl)])

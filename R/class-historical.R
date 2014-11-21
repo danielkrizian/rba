@@ -1,14 +1,17 @@
 library(R6); library("data.table"); library(xts) # TODO: remove library headers
-Historical <- R6Class("Historical",
-                      
-                      public = list(data = xts(),
+Historical <- R6Class("Historical",                      
+                      public = list(data = NA,
                                     freq = NA,
                                     last = NA,
-  initialize = function(data) {
+  initialize = function(data, align = TRUE) {
     data = as.historical(data)
     self$data = data
     self$last = index(data[dim(data)[1]])
     return(self)
+  },
+  
+  measure = function(FUN, ...){
+    summary.xts(self$data, FUN, ...)
   },
   
   print = function(){
@@ -18,7 +21,7 @@ Historical <- R6Class("Historical",
                       )
 )
 
-as.historical = function(x){
+as.historical = function(x, align, vars){
   UseMethod("as.historical")
 }
 
@@ -28,14 +31,14 @@ as.historical.data.table = function(x){
   time.col = cols$time.col[1]
   val.col = cols$val.col
   use.cols = c(id.col, time.col, val.col)
-  if(!is.null(id.col)) {
-    x = dcast.data.table(x[, use.cols, with=FALSE], 
-                         formula = as.formula(paste0(time.col, "~", 
-                                                     id.col )))
-    message("Tall dataset converted to wide format.")
-  }
-  order.by = as.POSIXct(x[[time.col]])
-  xts(x = x[, val.col, with=FALSE],  order.by=order.by)
+    if(!is.null(id.col)) {
+      x = dcast.data.table(x[, use.cols, with=FALSE], 
+                           formula = as.formula(paste0(time.col, "~", 
+                                                       id.col )))
+      message("Tall dataset converted to wide format.")
+    }
+    order.by = as.POSIXct(x[[time.col]])
+    return(xts(x = x[, val.col, with=FALSE],  order.by=order.by))
 }
 
 as.historical.xts = function(x) x

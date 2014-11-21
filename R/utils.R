@@ -1,8 +1,40 @@
 # todo: speed-up parallel colwise apply
 # current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
-xtsapply <- function(x, FUN, ...) {
-  "[<-"(x, , vapply(x, FUN,FUN.VALUE = numeric(nrow(x)), ...=...))
+xtsrunapply <- function(x, FUN, ...) {
+  "[<-"(x, , vapply(x, FUN, FUN.VALUE = numeric(nrow(x)), ...=...))
 }
+
+# returns single metric for each column. Takes care of leading NAs
+summary.xts = function(x, FUN, ...) {
+  vapply(x, function(col, ...) {
+    FUN(col[xts:::naCheck(col)$nonNA], ...)
+  }, FUN.VALUE = numeric(1), ...=...)
+}
+
+msapply <- function(...) {
+  arglist <- match.call(expand.dots = FALSE)$...
+  var.names <- sapply(arglist, deparse)
+  has.name <- (names(arglist) != "")
+  var.names[has.name] <- names(arglist)[has.name]
+  arglist <- lapply(arglist, eval.parent, n = 2)
+  x <- arglist[[1]]
+  arglist[[1]] <- NULL
+  result <- sapply(arglist, function (FUN, x) sapply(x, FUN), x)
+  colnames(result) <- var.names[-1]
+  return(result)
+}
+
+msum = function(x,...){
+#   http://r.789695.n4.nabble.com/Applying-multiple-functions-to-one-object-td3254253.html
+  fun.names = sapply(lapply(substitute(list(...)), deparse)[-1], paste, collapse="") 
+  mthd<-list(...) 
+  if(!is.list(x)) x = list(x) 
+  res = t(sapply(x, function(y) sapply(mthd, function(m) do.call(m, list(y)) ))) 
+  colnames(res) = fun.names 
+  rownames(res) = names(x) 
+  res 
+} 
+
 
 #' returns list of column names representing id, time, value
 detect_cols = function(data){
@@ -69,6 +101,10 @@ pch.default <- function(x, na.pad = T) {
 
 pch.xts <- function(x, na.pad = T) {
   diff.xts(x, na.pad=na.pad)/tail(x, -1)
+}
+
+pch.list <- function(x, na.pad = T) {
+  lapply(x, function(.XTS) pch.xts(.XTS))
 }
 
 cumProd = function(x, base) {
