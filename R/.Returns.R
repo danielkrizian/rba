@@ -1,23 +1,4 @@
 
-returns = function(x){
-  UseMethod("returns")
-}
-
-# returns.default <- function(x, ...) {
-#   Returns$new(data=x, ...)
-# }
-
-#' Construct returns object
-#'
-#' Always coerced to wide data format
-#' @rdname returns
-#' @export returns
-returns.Prices <- function(x) {
-  data = pch(x$data, na.pad=F)
-  r = Returns$new(data=data)
-  return(r)
-}
-
 Returns <- R6Class('Returns',
                    lock = FALSE,
                    inherit = Historical,
@@ -123,3 +104,24 @@ Returns <- R6Class('Returns',
                        , by=by])
                      })
 )
+
+returns <- function(x) UseMethod("returns")
+
+as.returns <- function(x) UseMethod("as.returns")
+
+as.returns.data.frame <- function(x) {
+  Returns$new(x)
+}
+
+# returns.default <- function(x, ...) {
+#   Returns$new(data=x, ...)
+# }
+
+#' Construct returns object
+#'
+#' Always coerced to wide data format
+#' @rdname returns
+#' @export returns
+returns.Prices <- function(x) {
+  return(x$returns())
+}

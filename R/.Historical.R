@@ -1,8 +1,17 @@
 library(R6); library("data.table"); library(xts) # TODO: remove library headers
-Historical <- R6Class("Historical",                      
-                      public = list(data = NA,
-                                    freq = NA,
+Historical <- R6Class("Historical",   
+                      private = list(.data = NA),
+                      active = list(
+  data = function(value) {
+    if(missing(value)) 
+      private$.data
+    else 
+      private$.data = value
+  }),
+  
+                      public = list(freq = NA,
                                     last = NA,
+                                    
   initialize = function(data, align = TRUE) {
     data = as.historical(data)
     self$data = data
@@ -11,12 +20,12 @@ Historical <- R6Class("Historical",
   },
   
   measure = function(FUN, ...){
-    summary.xts(self$data, FUN, ...)
+    summary.xts(private$.data, FUN, ...)
   },
   
   print = function(){
-    print(head(self$data))
-    print(tail(self$data))
+    print(head(private$.data))
+    print(tail(private$.data))
   }
                       )
 )

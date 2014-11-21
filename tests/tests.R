@@ -12,7 +12,10 @@ RETURNS_wide = dcast.data.table(OHLCV[,list(Date,
 # detect_cols(PRICES_wide)
 
 #### construction ####
-performance(returns(RETURNS_wide))$prices
+r = as.returns(RETURNS_wide)
+p = as.prices(PRICES_wide)
+
+performance()$prices
 p = prices(PRICES_wide)$monthly()
 performance(p)$prices
 performance(p)$returns
