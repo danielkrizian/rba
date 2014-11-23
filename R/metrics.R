@@ -1,3 +1,41 @@
+##### percent change & value index ####
+
+pch <- function(x, na.pad = T) UseMethod("pch")
+
+pch.default <- function(x, na.pad = T) {
+  pch = diff.default(x)/x[2:length(x)]
+  if(na.pad)
+    c(NA, pch)
+  return(pch)
+}
+
+pch.xts <- function(x, na.pad = T) {
+  diff.xts(x, na.pad=na.pad)/tail(x, -1)
+}
+
+pch.list <- function(x, na.pad = T) {
+  lapply(x, function(.XTS) pch.xts(.XTS))
+}
+
+cumProd <- function(x, base) {
+  firstLeadNonNA = xts:::naCheck(x)$beg
+  x[!is.na(x)] <- base * cumprod( 1 + x[!is.na(x)] )
+  if(firstLeadNonNA > 0L)
+    x[firstLeadNonNA] = base
+  x
+}
+
+#' Construct the chained value index from relative changes
+#'
+#' todo: speed-up parallel colwise cumprod with leading NAs
+#' current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
+value_index <- function(x, base = 100) UseMethod("value_index")
+
+value_index.xts <- function(x, base = 100) {
+  xtsrunapply(x, cumProd, base = base)
+}
+
+#### PERFORMANCE ####
 
 cagr <- function(value, n, base=100, ann=252) {
   (value/base)^(ann / n) - 1
@@ -60,7 +98,7 @@ alpha <- function(R, Rb, Rf=0) {
 }
 
 #' Some Title
-#' 
+#'
 #' @param equity
 #' @export
 r2 <- function(equity) {
@@ -68,7 +106,7 @@ r2 <- function(equity) {
 }
 
 #' David Varadi's Ratio
-#' 
+#'
 #' @export
 dvr <- function(R, Rf=0, ann=252) {
   sharpe(R, Rf=Rf, ann=ann) * r2(cumprod(1+R))
@@ -80,15 +118,6 @@ mar <- function(R, ann=252) {
   n =length(e)
   dd = abs(e / cummax(e) - 1)
   cagr(e[n], n, base=1, ann) / max(dd)
-}
-
-####### VALUE INDEX ######
-
-#' @param x vector of  percent changes
-#' @import zoo
-value.index <- function(x){
-  x = na.fill(x, fill=0)
-  cumprod(1+x)
 }
 
 ####### DRAWDOWNS ######
@@ -111,10 +140,10 @@ avgdd <- function(x) {
 
   ddstarts = which( dd != 0 & prevdd == 0 )
   ddends = which( dd == 0 & prevdd != 0 )
-  
+
   if(tail(ddends,1)!=length(dd))
     ddends <- c(ddends, length(dd)) # close last incomplete drawdown
-    
+
   if(length(ddends) != length(ddstarts)) {
     cat(dd)
     stop(paste("Error calculating average drawdown. There are", length(ddstarts), "DD starts and ", length(ddends), "DD ends"))
@@ -124,9 +153,9 @@ avgdd <- function(x) {
 }
 
 summary.drawdowns <- function(drawdowns, dates=NULL) {
-  
+
   prevdd <- c(0, drawdowns[-length(drawdowns)])
-  
+
   ddstarts = which( drawdowns != 0 & prevdd == 0 )
   ddends = which( drawdowns == 0 & prevdd != 0 )
   if(!length(ddstarts) | !length(ddends))
@@ -138,17 +167,17 @@ summary.drawdowns <- function(drawdowns, dates=NULL) {
                       ,"To Trough"=numeric(0)
                       ,"Recovery"=numeric(0)
                       , key="Depth"))
-  
+
   if(tail(ddends,1)!=length(drawdowns) & drawdowns[length(drawdowns)] !=0)
     ddends <- c(ddends, length(drawdowns)) # close last incomplete drawdown
-  
+
   ddthroughs <- rbindlist(sapply(1:length(ddstarts), function(x) {
     ddsubset <- drawdowns[ddstarts[x]:ddends[x]]
     depth <- min(ddsubset)
     list(depth=depth,
          index=which(drawdowns==depth)[1])  # take first if multiple matches
   }, simplify=FALSE))
-  
+
   out <- data.table(From=dates[ddstarts]
                     ,Trough=dates[ddthroughs$index]
                     , To=dates[ddends]

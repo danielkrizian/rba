@@ -1,28 +1,36 @@
 library(R6); library("data.table"); library(xts) # TODO: remove library headers
-Historical <- R6Class("Historical",   
+Historical <- R6Class("Historical",
                       private = list(.data = NA),
                       active = list(
   data = function(value) {
-    if(missing(value)) 
+    if(missing(value))
       private$.data
-    else 
+    else
       private$.data = value
   }),
-  
+
                       public = list(freq = NA,
                                     last = NA,
-                                    
-  initialize = function(data, align = TRUE) {
+
+  initialize = function(data) {
     data = as.historical(data)
     self$data = data
     self$last = index(data[dim(data)[1]])
     return(self)
   },
-  
+
+  compress = function(period, how){
+    csetup = .compression(period)
+    period = csetup$xtsstyle
+    self$data = to.period(self$data, period, indexAt='endof', name=NULL, OHLC=FALSE)
+    self$freq = csetup$freq
+    return(self)
+  },
+
   measure = function(FUN, ...){
     summary.xts(private$.data, FUN, ...)
   },
-  
+
   print = function(){
     print(head(private$.data))
     print(tail(private$.data))
@@ -30,7 +38,7 @@ Historical <- R6Class("Historical",
                       )
 )
 
-as.historical = function(x, align, vars){
+as.historical = function(x){
   UseMethod("as.historical")
 }
 
@@ -41,39 +49,35 @@ as.historical.data.table = function(x){
   val.col = cols$val.col
   use.cols = c(id.col, time.col, val.col)
     if(!is.null(id.col)) {
-      x = dcast.data.table(x[, use.cols, with=FALSE], 
-                           formula = as.formula(paste0(time.col, "~", 
+      x = dcast.data.table(x[, use.cols, with=FALSE],
+                           formula = as.formula(paste0(time.col, "~",
                                                        id.col )))
       message("Tall dataset converted to wide format.")
     }
-    order.by = as.POSIXct(x[[time.col]])
-    return(xts(x = x[, val.col, with=FALSE],  order.by=order.by))
+  order.by = as.POSIXct(x[[time.col]])
+  out = xts(x = x[, val.col, with=FALSE],  order.by=order.by)
+  return(out)
 }
 
-as.historical.xts = function(x) x
+as.historical.xts = function(x) {
+  x
+}
 
-#   compress = function(rule, how="last") {
-# #       # grepl(" month | months | month| months|month |months |month|months",rule, ignore.case=TRUE)
-# #       # grepl(" hour | hours | hour| hours|hour |hours |hour|hours",rule, ignore.case=TRUE)
-# #       # grepl(" min | minutes | min| minutes|min |minutes |min|minutes",rule, ignore.case=TRUE)
-# #       # grepl(" sec| secs| seconds|sec|secs|seconds",rule, ignore.case=TRUE)
-# #       require(xts)
-# #       require(lubridate)
-# #       if(grepl(" quarter | quarters | quarter| quarters|quarter |quarters |quarter|quarters"
-# #                ,rule, ignore.case=TRUE)) {
-# #         if(how=="last")
-# #           data <<- data[,.SD[endpoints(eval(as.name(private$time)), on = "quarters")], by=private$id]
-# #         freq <<- 4L
-# #       }
-# #       if(grepl(" month | months | month| months|month |months |month|months"
-# #                ,rule, ignore.case=TRUE)) {
-# #         if(how=="last") {
-# #           data <<- data[,.SD[endpoints(eval(as.name(private$time)), on = "months")], by=private$id]
-# #           # find last day of a current month
-# #           data[,c(private$time):=floor_date(eval(as.name(private$time)),"month")+months(1)-days(1)] # e.g. 2013-11-29 (last BD) to 2013-11-30
-# #           freq <<- 12L
-# #         }
-# #       }
-# #       setkeyv(data, c(private$id, private$time))
-# #       return(.self)
-#   },
+.compression = function(x) {
+      # grepl(" month | months | month| months|month |months |month|months",rule, ignore.case=TRUE)
+      # grepl(" hour | hours | hour| hours|hour |hours |hour|hours",rule, ignore.case=TRUE)
+      # grepl(" min | minutes | min| minutes|min |minutes |min|minutes",rule, ignore.case=TRUE)
+      # grepl(" sec| secs| seconds|sec|secs|seconds",rule, ignore.case=TRUE)
+
+      if(grepl(" quarter | quarters | quarter| quarters|quarter |quarters |quarter|quarters"
+               ,x, ignore.case=TRUE)) {
+        xtsstyle="quarters"
+        freq = 4L
+      }
+      if(grepl(" month | months | month| months|month |months |month|months"
+               ,x, ignore.case=TRUE)) {
+        xtsstyle="months"
+        freq = 12L
+      }
+      return(list(xtsstyle=xtsstyle, freq=freq))
+}
