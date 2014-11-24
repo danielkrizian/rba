@@ -30,37 +30,53 @@ as.returns.prices <- function(x, na.pad = TRUE, ...) {
   r
 }
 
-summary.returns <- function(x, stats=c("")) {
+summary.returns <- function(x, weights=NULL, trailing=NULL) {
+
+  benchmarks = xtsAttributes(x)$benchmarks
+  assets = setdiff(colnames(x), benchmarks)
+  if(!is.null(benchmarks))
+    x = x[,c(assets, benchmarks)] # put benchmarks to the end
+
+  portfolio = if(!is.null(weights)) {
+    Return.portfolio(x[,assets], weights)
+  } else
+    if(length(assets)==1)
+    x[,assets]
+
+
+
   l = index(x)[length(index(x))]
   pr = as.prices(x)
   mtd = paste(as.Date(cut(l,"month")) - 1, "::")
   qtd = paste(as.Date(cut(l,"quarter")) - 1, "::")
   ytd = paste(as.Date(cut(l,"year")) - 1, "::")
   l12m = paste(as.Date(l) - months(12), "::")
-  perf.tbl = 
-    rbind("MTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[mtd][1]) - 1,
-          "QTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[qtd][1]) - 1,
-          "YTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[ytd][1]) - 1,
-          "Last 12M"=as.numeric(pr[NROW(pr)])/as.numeric(pr[l12m][1]) - 1,
-          "Vol (ann.)"=summary.xts(x, stdev, ann=xtsAttributes(x)$ann))
-  
-  assets = setdiff(colnames(x), benchmarks)
-  if(!is.null(benchmarks))
-    perf.tbl = perf.tbl[,c(assets, benchmarks)] # put benchmarks to the end
-  
-  benchmarks = xtsAttributes(x)$benchmarks
+  performance = rbind("MTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[mtd][1]) - 1,
+                   "QTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[qtd][1]) - 1,
+                   "YTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[ytd][1]) - 1,
+                   "Last 12M"=as.numeric(pr[NROW(pr)])/as.numeric(pr[l12m][1]) - 1,
+                   "Vol (ann.)"=summary.xts(x, stdev, ann=xtsAttributes(x)$ann))
+  out = list(performance=performance)
+
   if(!is.null(benchmarks)){
+    correlations = NULL
     for(b in benchmarks){
-      bm.tbl = t(cor(x[, c(assets, setdiff(benchmarks, b))], x[, b], use="pairwise.complete.obs"))
-      bm.tbl = t(append(bm.tbl, NA, pmatch(b, colnames(perf.tbl)) - 1))
-      rownames(bm.tbl) = paste("Correl w", b)
-      
-      capm.model = capm(x, b, Rf=0)
-      bm.tbl = rbind(bm.tbl, corr)
+      corr = t(cor(x, x[, b], use="pairwise.complete.obs"))
+      corr[,b] = NA
+      rownames(corr) = paste("Correl w", b)
+      correlations = rbind(correlations, corr)
     }
+    out = c(out, list(correlations=correlations))
   }
+
+  if(!is.null(benchmarks) & (length(assets)==1 | !is.null(weights))){
+
+    if(!is.null(trailing))
+    relative = capm()
+  }
+# capm.model = capm(x, b, Rf=0)
   out
-  
+
 }
 
 capm <- function(x, ...) UseMethod("capm")
@@ -82,12 +98,12 @@ capm.returns <- function(x, benchmarks, Rf=0) {
     bpos = pmatch(benchmark, colnames(R))
     model.lm = lm(R[, -bpos] ~ R[, bpos], R)
     browser()
-    alpha = coef(model.lm)[1,]
-    beta = coef(model.lm)[2,]
+    alpha = coef(model.lm)[[1]]
+    beta = coef(model.lm)[[2]]
     rbind(Alpha=alpha, Beta=beta)
-  }, USE.NAMES=T, simplify=F)
-  if(length(out)==1)
-    out[[1]]
+  }, USE.NAMES=T, simplify=T)
+  rownames(out) =  c("Alpha", "Beta")
+  out
 }
 
 
@@ -96,7 +112,7 @@ capm.returns <- function(x, benchmarks, Rf=0) {
 #     Rf=0
 #     data[, list(Alpha=alpha(Return, Benchmark, Rf)), by=Instrument]
 #   },
-# 
+#
 #   calendar = function(what=c("MTD", "YTD", "3M", "6M", "years")){
 #     freq = 12L
 #     warning("Freq fixed at 12 in Returns.calendar. TODO")
@@ -106,12 +122,12 @@ capm.returns <- function(x, benchmarks, Rf=0) {
 #     out <- merge(all, years)
 #     return(out)
 #   },
-# 
+#
 #   cov = function(benchmark=FALSE, use='complete.obs', method='pearson'){
 #     cov_mat = stats::cov(self$widedata, use=use, method=method)
 #     return(cov_mat)
 #   },
-# 
+#
 #   cor = function(benchmark=FALSE, use='complete.obs', method='pearson'){
 #     if(benchmark){
 #       # data[, list(Correlation=cor(Return,Benchmark)),keyby=Instrument]
@@ -121,18 +137,18 @@ capm.returns <- function(x, benchmarks, Rf=0) {
 #     }
 #     return(cor_mat)
 #   },
-# 
+#
 #   mean = function() {
 #     colMeans(self$widedata)
 #   },
-# 
+#
 #   plot = function(drawdowns=T) {
 #     datacols=c(.id, .time, .self$index)
 #     if(drawdowns)
 #       datacols = c(datacols, .self$drawdowns)
 #     x = data[, datacols, with=FALSE]
 #     x = data.table:::melt.data.table(x, id.vars=c("Instrument","Date"))
-# 
+#
 #     p <- ggplot(x, aes(x=Date, y=value, colour=Instrument)) + geom_line() +
 #       #   scale_y_continuous(trans=log10_trans())
 #       # p +
@@ -144,26 +160,26 @@ capm.returns <- function(x, benchmarks, Rf=0) {
 #       theme_economist_white(gray_bg=FALSE) +
 #       scale_colour_economist() +
 #       xlab("") + ylab("Cumulative Performance (Log scale)")
-# 
+#
 #     g = ggplotGrob(p)
 #     panels = which(sapply(g[["heights"]], "attr", "unit") == "null")
 #     g[["heights"]][panels] = list(unit(12, "cm"), unit(3, "cm"))
 #     dev.off()
 #     grid.draw(g)
 #   },
-# 
+#
 #   summary = function(weights=NULL) {
-# 
+#
 #     ann=252
 #     compound=T
 #     Return = as.name(.col)
-# 
+#
 #     by= if(is.null(weights)) "Instrument" else NULL
-# 
+#
 #     data[, Equity:= cumprod(1+eval(Return)), by=Instrument]
 #     data[, Drawdown:= Equity / cummax(Equity) - 1, by=Instrument]
 #     dd <- data[, summary.drawdowns(Drawdown, Date), by=Instrument]
-# 
+#
 #     return(data[,list(
 #       "CAGR"=annualized(eval(Return), ann=ann, compound=compound)
 #       , "Total Return"=cumulative(eval(Return), compound=compound)

@@ -26,4 +26,3 @@ p = to.monthly(p)
 summary(r)
 
 
-msapply(p$data, min)

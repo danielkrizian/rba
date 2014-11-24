@@ -36,13 +36,13 @@ msum = function(x,...){
 }
 
 merge_list <- function (x, y, ...){
-  if (length(x) == 0) 
+  if (length(x) == 0)
     return(y)
-  if (length(y) == 0) 
+  if (length(y) == 0)
     return(x)
   i = match(names(y), names(x))
   i = is.na(i)
-  if (any(i)) 
+  if (any(i))
     x[names(y)[which(i)]] = y[which(i)]
   return(x)
 }

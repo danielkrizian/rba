@@ -42,5 +42,5 @@ as.prices.returns <- function(x, base = 100, ...) {
 # }
 
 # `[.prices` <- function(x, i, j, period) {
-# 
+#
 # }
