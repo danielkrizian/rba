@@ -35,6 +35,18 @@ msum = function(x,...){
   res
 }
 
+merge_list <- function (x, y, ...){
+  if (length(x) == 0) 
+    return(y)
+  if (length(y) == 0) 
+    return(x)
+  i = match(names(y), names(x))
+  i = is.na(i)
+  if (any(i)) 
+    x[names(y)[which(i)]] = y[which(i)]
+  return(x)
+}
+
 
 #' returns list of column names representing id, time, value
 detect_cols = function(data){
@@ -77,16 +89,23 @@ detect_cols = function(data){
   return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
 
-as.xts.data.table <- function(x, index.col=NULL){
-  if(is.null(index.col))
-    index.col = detect_cols(x)$time.col
-  if(is.symbol(index.col))
-    index.col = deparse(substitute(index.col))
-  order.by = as.Date(as.character(x[[index.col]]))
-  x[, c(index.col):=NULL]
-  out = xts(x, order.by = order.by)
+.as.xts.data.table = function(x){
+  cols = detect_cols(x)
+  id.col = cols$id.col[1]
+  time.col = cols$time.col[1]
+  val.col = cols$val.col
+  use.cols = c(id.col, time.col, val.col)
+  if(!is.null(id.col)) {
+    x = dcast.data.table(x[, use.cols, with=FALSE],
+                         formula = as.formula(paste0(time.col, "~",
+                                                     id.col )))
+    message("Tall dataset converted to wide format.")
+  }
+  order.by = as.POSIXct(x[[time.col]])
+  out = xts(x = x[, val.col, with=FALSE],  order.by=order.by)
   return(out)
 }
+
 
 #' Detect returns data
 #'

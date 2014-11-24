@@ -1,65 +1,46 @@
-library(quantmod); library(xts) # # TODO: remove quantmod dependency
+library(xts) # # TODO: remove quantmod dependency
+
+##### value index ####
+
+cumProd <- function(x, base) {
+  firstLeadNonNA = xts:::naCheck(x)$beg
+  x[!is.na(x)] <- base * cumprod( 1 + x[!is.na(x)] )
+  if(firstLeadNonNA > 0L)
+    x[firstLeadNonNA] = base
+  x
+}
 
 #' Prices is a class for representing price data
 #'
 #'
-Prices <- R6Class("Prices",
-                  lock=FALSE,
-                  inherit = Historical,
-                  private = list(returns_object = NA,
 
-  calculate_returns = function(){
-    obj = Returns$new(pch(self$data, na.pad=TRUE), track.prices=FALSE)
-    obj$prices = self
-    self$returns = obj
-  }
-                                 ),
-                  active = list(
-
-  returns = function(value) {
-    if(missing(value))
-      private$returns_object
-    else {
-      private$returns_object = value
-    }
-    # TODO through Reference Class or [ update
-    # make sure they are same frequency as prices
-  }
-                      ),
-
-                  public = list(
-
-  initialize = function(data, track.returns=TRUE){
-    super$initialize(data)
-    if(track.returns)
-      private$calculate_returns()
-    return(self)
-  },
-
-  compress = function(period){
-    super$compress(period)
-    private$calculate_returns()
-    return(self)
-  },
-
-  print = function (){
-    print("Prices")
-    super$print()
-  }
-                  )
-)
-
-prices <- function(x, track.returns=TRUE) {
-  p = Prices$new(data=x, track.returns=track.returns)
-  return(p)
+prices <- function(x, benchmarks=NULL) {
+  ann = periodicity(as.xts(x))$frequency/60/60/24*12
+  structure(x, class=c("prices", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
 }
 
-as.prices <- function(x) UseMethod("as.prices")
+as.prices <- function(x, ...) UseMethod("as.prices")
 
-as.prices.data.frame <- function(x, track.returns=TRUE) {
-  prices(x, track.returns)
+as.prices.data.frame <- function(x, ...) {
+  x = .as.xts.data.table(x)
+  prices(x, ...)
 }
 
-`[.Prices` <- function(x, i, j, period) {
-
+#' Construct the chained value index from relative changes
+#'
+#' todo: speed-up parallel colwise cumprod with leading NAs
+#' current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
+as.prices.returns <- function(x, base = 100, ...) {
+  pr = xtsrunapply(x, cumProd, base = base)
+  pr = prices(pr)
+  xtsAttributes(pr) = xtsAttributes(x, user=T)
+  pr
 }
+
+# Ops.returns <- function(e1, e2) {
+#   xts:::Ops.xts(as.xts(e1), as.xts(e2))
+# }
+
+# `[.prices` <- function(x, i, j, period) {
+# 
+# }

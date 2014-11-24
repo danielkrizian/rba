@@ -1,39 +1,4 @@
-##### percent change & value index ####
 
-pch <- function(x, na.pad = T) UseMethod("pch")
-
-pch.default <- function(x, na.pad = T) {
-  pch = diff.default(x)/x[2:length(x)]
-  if(na.pad)
-    c(NA, pch)
-  return(pch)
-}
-
-pch.xts <- function(x, na.pad = T) {
-  diff.xts(x, na.pad=na.pad)/tail(x, -1)
-}
-
-pch.list <- function(x, na.pad = T) {
-  lapply(x, function(.XTS) pch.xts(.XTS))
-}
-
-cumProd <- function(x, base) {
-  firstLeadNonNA = xts:::naCheck(x)$beg
-  x[!is.na(x)] <- base * cumprod( 1 + x[!is.na(x)] )
-  if(firstLeadNonNA > 0L)
-    x[firstLeadNonNA] = base
-  x
-}
-
-#' Construct the chained value index from relative changes
-#'
-#' todo: speed-up parallel colwise cumprod with leading NAs
-#' current horse race: http://codereview.stackexchange.com/questions/39180/best-way-to-apply-across-an-xts-object
-value_index <- function(x, base = 100) UseMethod("value_index")
-
-value_index.xts <- function(x, base = 100) {
-  xtsrunapply(x, cumProd, base = base)
-}
 
 #### PERFORMANCE ####
 
@@ -61,8 +26,12 @@ annualized <- function(x, ann=12, compound=F) {
 
 ##### VOLATILITY ####################
 
-sigma <- volatility <- vol <- std.default <- stdev <- StDev <- function(x, ann=12) {
-  sqrt(ann) * sd(x)
+sigma <- volatility <- vol <- std.default <- stdev <- StDev <- function(x, ann=NULL) {
+
+  out = sd(x)
+  if(!is.null(ann))
+    out = sqrt(ann) * out
+  out
 }
 
 
@@ -89,12 +58,6 @@ atr <- ATR <- function(hi, lo, cl, n=14, ma, ...) {
 sharpe <- function(R, Rf=0,ann=252) {
   excess = R - Rf
   sqrt(ann) * mean(excess) / sd(excess)
-}
-
-alpha <- function(R, Rb, Rf=0) {
-  merged = as.data.frame(na.omit(cbind(R-Rf, Rb-Rf)))
-  model.lm = lm(merged[, 1] ~ merged[, 2], merged)
-  coef(model.lm)[[1]]
 }
 
 #' Some Title

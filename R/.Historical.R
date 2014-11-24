@@ -24,7 +24,7 @@ Historical <- R6Class("Historical",
     period = csetup$xtsstyle
     self$data = to.period(self$data, period, indexAt='endof', name=NULL, OHLC=FALSE)
     self$freq = csetup$freq
-    return(self)
+    return(invisible(self))
   },
 
   measure = function(FUN, ...){

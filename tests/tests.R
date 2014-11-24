@@ -12,22 +12,18 @@ RETURNS_wide = dcast.data.table(OHLCV[,list(Date,
 # detect_cols(PRICES_wide)
 
 #### construction ####
-r = as.returns(RETURNS_wide)
-p = as.prices(PRICES_wide)
+r = as.returns(RETURNS_wide, benchmarks="SPX")
+p = as.prices(PRICES_wide,  benchmarks="SPX")
 
 # compress into monthly frequency
-p$compress("monthly")
-r$compress("monthly")
+r = to.monthly(r)
+p = to.monthly(p)
 
-# TODO: test constructors from OHLC data
+# TODO:  OHLC class constructor
 # Monthly returns from OHLCV bars, calculated from Close to Close by default
 # R = ohlc(OHLCV)$monthly()$returns()
-# prices(OHLCV, val.col="Close")$monthly()$returns() # monthly returns from Close prices
-# ohlc(OHLCV)$monthly() # monthly OHLC bars
-# ohlc(OHLCV)$monthly()$returns()$cor() # monthly return correlations
-# ohlc(OHLCV)$monthly()$returns()$calendar()
 
-performance(p)$summary()
+summary(r)
 
 
 msapply(p$data, min)

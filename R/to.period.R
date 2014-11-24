@@ -58,3 +58,22 @@ to.period = function (x, period = "months", k = 1, indexAt = NULL, name = NULL,
   }
   reclass(xx, xo)
 }
+
+to.monthly <- function(x, ...) UseMethod("to.monthly")
+
+to.monthly.xts <- function(x, ...) {
+  xts::to.monthly(as.xts(x), ...)
+}
+
+to.monthly.returns <- function(x) {
+  pr = as.prices(x)
+  pr = to.monthly(pr, indexAt='endof', name=NULL, OHLC=FALSE)
+  xtsAttributes(pr) <- list(ann=12)
+  as.returns(pr)
+}
+
+to.monthly.prices <- function(x, ...){
+  pr = to.period(x, period="months", indexAt = "endof", OHLC = FALSE)
+  xtsAttributes(pr) <- list(ann=12)
+  pr
+}
