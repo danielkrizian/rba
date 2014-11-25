@@ -38,15 +38,16 @@ summary.returns <- function(x, weights=NULL, trailing=NULL) {
     x = x[,c(assets, benchmarks)] # put benchmarks to the end
 
   portfolio = if(!is.null(weights)) {
-    Return.portfolio(x[,assets], weights)
+    weights
+    Return.portfolio(x[,assets], weights, wealth.index = FALSE,
+                     contribution = FALSE, geometric = TRUE)
   } else
     if(length(assets)==1)
     x[,assets]
 
-
-
   l = index(x)[length(index(x))]
   pr = as.prices(x)
+  
   mtd = paste(as.Date(cut(l,"month")) - 1, "::")
   qtd = paste(as.Date(cut(l,"quarter")) - 1, "::")
   ytd = paste(as.Date(cut(l,"year")) - 1, "::")
@@ -69,15 +70,39 @@ summary.returns <- function(x, weights=NULL, trailing=NULL) {
     out = c(out, list(correlations=correlations))
   }
 
-  if(!is.null(benchmarks) & (length(assets)==1 | !is.null(weights))){
+  if(!is.null(benchmarks) & length(assets)==1){
 
     if(!is.null(trailing))
-    relative = capm()
+    relative = capm(x)
   }
 # capm.model = capm(x, b, Rf=0)
   out
 
 }
+
+portfolio <- function(x, ...) UseMethod("portfolio")
+
+portfolio.returns <- function(x, weights, na.omit=TRUE, name="Portfolio") {
+  # TODO: integrate with strategery Portfolio class
+  # TODO: see portfolio.R to integrate rebalancing schemes
+  benchmarks = xtsAttributes(x)$benchmarks
+  Ra = x[,names(weights)] #x[,-pmatch(benchmarks, colnames(x))]
+  if(na.omit)
+    Ra = na.omit(Ra)
+  else {} # na.omit=FALSE reallocate weights from missing instruments
+  
+  if(length(names(weights))) # ensure alignment of weights with returns
+    weights = weights[colnames(Ra)]
+  
+  out = PerformanceAnalytics::Return.portfolio(Ra, weights = weights, 
+                                               wealth.index = FALSE,
+                                               contribution = FALSE,
+                                               geometric = TRUE)
+  colnames(out) = c(name)
+  out
+}
+
+# portfolio(r, weights=c(VTI=0.5, ))
 
 capm <- function(x, ...) UseMethod("capm")
 
@@ -94,16 +119,18 @@ capm.returns <- function(x, benchmarks, Rf=0) {
   R = na.omit(x) - Rf
   if(missing(benchmarks))
     benchmarks = xtsAttributes(x)$benchmarks
+  asset = setdiff(colnames(x), benchmarks)[1]
+  browser()
   out = sapply(benchmarks, function(benchmark){
     bpos = pmatch(benchmark, colnames(R))
-    model.lm = lm(R[, -bpos] ~ R[, bpos], R)
-    browser()
+    apos = pmatch(asset, colnames(R))
+    model.lm = lm(R[, apos] ~ R[, bpos], R)
     alpha = coef(model.lm)[[1]]
     beta = coef(model.lm)[[2]]
-    rbind(Alpha=alpha, Beta=beta)
-  }, USE.NAMES=T, simplify=T)
-  rownames(out) =  c("Alpha", "Beta")
-  out
+    list(alpha=alpha, beta=beta)
+  })
+  
+  list(alpha=unlist(out["alpha",]), beta=unlist(out["beta",]))
 }
 
 
