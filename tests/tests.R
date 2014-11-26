@@ -30,13 +30,10 @@ calculate(trailing(r, "ytd"), "performance"),
 calculate(trailing(r, "l12m"), "performance")))
 
 cor(r)
-capm(trailing(r, "l12m"))
+capm(trailing(r, "l12m"))$Alpha
 
 calculate(annualized(trailing(r, "l12m")), "sd")
 capm(annualized(trailing(r, "l12m")))
-
-cor(r)
-summary(r)
 
 calculate(annualized(trailing(r, "mtd")), "performance")
 

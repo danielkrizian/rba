@@ -1,5 +1,5 @@
 #' Construct portfolio from returns
-#' 
+#'
 #' portfolio(r, weights=c(VTI=0.5, ))
 portfolio <- function(x, ...) UseMethod("portfolio")
 

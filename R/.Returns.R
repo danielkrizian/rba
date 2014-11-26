@@ -68,15 +68,47 @@ cor.default <- function(x, y = NULL, use = "everything",
   stats::cor(x, y, use, method)
 }
 
-cor.returns <- function(x, use = "pairwise.complete.obs", method="pearson") {
-  stats::cor(x, use=use, method=method)
+#' @param all display all cross-correlations. FALSE for asset vs. benchmark only
+cor.returns <- function(x, all=FALSE, use = "pairwise.complete.obs", method="pearson") {
+  out = stats::cor(x, use=use, method=method)
+  if(!all) {
+    benchmarks = xtsAttributes(x)$benchmarks
+    for(b in match(benchmarks, colnames(x)))
+      out[b, b] = NA
+
+    out = out[benchmarks, ]
+  }
+    out
 }
 
-#   calcAlpha = function(annualize=T) {
-#     # TODO(dk): finalize Returns.alpha. Signature: benchmark data.table, Rf data.table
-#     Rf=0
-#     data[, list(Alpha=alpha(Return, Benchmark, Rf)), by=Instrument]
-#   },
+
+#### PERFORMANCE RELATIVE (CAPM) ####
+
+capm <- function(x, ...) UseMethod("capm")
+
+capm.returns <- function(x, Rf=0) {
+  R = na.omit(x) - Rf
+  benchmarks = xtsAttributes(x)$benchmarks
+  assets = setdiff(colnames(x), benchmarks)
+
+  alpha = NULL
+  beta = NULL
+  lapply(benchmarks, function(benchmark){
+    bpos = pmatch(benchmark, colnames(R))
+    apos = pmatch(assets, colnames(R))
+    model.lm = lm(R[, apos] ~ R[, bpos], R)
+    add.alpha = if(length(apos)>1) coef(model.lm)[1,] else coef(model.lm)[[1]]
+    add.beta  = if(length(apos)>1) coef(model.lm)[2,] else coef(model.lm)[[2]]
+    add.alpha = t(add.alpha); rownames(add.alpha) = benchmark
+    add.beta = t(add.beta); rownames(add.beta) = benchmark
+    alpha <<- rbind(alpha, add.alpha)
+    beta <<- rbind(beta, add.beta)
+    invisible(list())
+  })
+
+  list(Alpha=alpha, Beta=beta)
+}
+
 #
 #   calendar = function(what=c("MTD", "YTD", "3M", "6M", "years")){
 #     freq = 12L

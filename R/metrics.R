@@ -1,16 +1,13 @@
 metric_label <- function(FUN, limit) {
   #TODO: limit not yet implemented
-  
-  metric.labels = c(sd="Vol", 
+
+  metric.labels = c(sd="Vol",
                     performance="Return")
   label = as.character(metric.labels[FUN][1])
   if(is.na(label))
     label = FUN
   return(label)
 }
-
-
-
 
 annualized <- function(x) {
   structure(x, name=paste0("Ann. ", attr(x, "name")), class=c("annualized", class(x)))
@@ -20,7 +17,7 @@ trailing <- function(x, ...) UseMethod("trailing")
 
 trailing.default <- function(x, period) {
   l = index(x)[length(index(x))]
-  out = switch(tolower(period), 
+  out = switch(tolower(period),
                "mtd" = x[paste(as.Date(cut(l,"month")) - 1, "::")],
                "qtd" = x[paste(as.Date(cut(l,"quarter")) - 1, "::")],
                "ytd" = x[paste(as.Date(cut(l,"year")) - 1, "::")],
@@ -52,7 +49,7 @@ calculate.default = function(x, FUN, ...) {
 
 calculate.rolling <- function(x, FUN, ...) {
   xtsrunapply(x, FUN, ...)
-} 
+}
 
 calculate.annualized = function(x, FUN, ...) {
   FUN.ann <- paste(FUN, "ann", sep=".")
@@ -86,7 +83,7 @@ calculate.trailing = function(x, FUN, ...) {
 # cagr <- function(value, n, base=100, ann=252) {
 #   (value/base)^(ann / n) - 1
 # }
-# 
+#
 # twr <- function(value, base=100) {
 #   value/base
 # }
@@ -99,28 +96,6 @@ performance <- function(x) {
 
 performance.ann <- function(x, ann) {
   compound(x)^(ann/length(x)) - 1
-}
-
-#### PERFORMANCE RELATIVE (CAPM) ####
-
-capm <- function(x, ...) UseMethod("capm")
-
-capm.returns <- function(x, Rf=0) {
-  R = na.omit(x) - Rf
-  benchmarks = xtsAttributes(x)$benchmarks
-  assets = setdiff(colnames(x), benchmarks)
-  
-  out = sapply(benchmarks, function(benchmark){
-    browser()
-    bpos = pmatch(benchmark, colnames(R))
-    apos = pmatch(assets, colnames(R))
-    model.lm = lm(R[, apos] ~ R[, bpos], R)
-    alpha = coef(model.lm)[[1]]
-    beta = coef(model.lm)[[2]]
-    list(Alpha=alpha, Beta=beta)
-  })
-  
-  list(Alpha=unlist(out["Alpha",]), beta=unlist(out["Beta",]))
 }
 
 ##### VOLATILITY ####################
