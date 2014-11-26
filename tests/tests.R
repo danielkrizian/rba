@@ -26,3 +26,9 @@ p = to.monthly(p)
 summary(r)
 
 
+portf = portfolio(r, weights=c(VTI=0.5, DBC=0.5))
+summary(portf)
+
+# trailing.returns()
+# rolling.returns()
+# r %>% monthly %>% trailing %>% annualized %>% return
