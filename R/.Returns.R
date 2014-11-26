@@ -8,6 +8,9 @@ make_returns <- function(x, na.pad = T) {
 
 returns <- function(x, benchmarks=NULL) {
   ann = periodicity(as.xts(x))$frequency/60/60/24*12
+  assets = setdiff(colnames(x), benchmarks)
+  if(!is.null(benchmarks))
+    x = x[,c(assets, benchmarks)] # put benchmarks to the end
   structure(x, class=c("returns", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
 }
 
@@ -33,9 +36,6 @@ as.returns.prices <- function(x, na.pad = TRUE, ...) {
 summary.returns <- function(x, weights=NULL, trailing=NULL) {
 
   benchmarks = xtsAttributes(x)$benchmarks
-  assets = setdiff(colnames(x), benchmarks)
-  if(!is.null(benchmarks))
-    x = x[,c(assets, benchmarks)] # put benchmarks to the end
 
   l = index(x)[length(index(x))]
   pr = as.prices(x)
@@ -48,19 +48,8 @@ summary.returns <- function(x, weights=NULL, trailing=NULL) {
                    "QTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[qtd][1]) - 1,
                    "YTD"=as.numeric(pr[NROW(pr)])/as.numeric(pr[ytd][1]) - 1,
                    "Last 12M"=as.numeric(pr[NROW(pr)])/as.numeric(pr[l12m][1]) - 1,
-                   "Vol (ann.)"=summary.xts(x, stdev, ann=xtsAttributes(x)$ann))
+                   "Vol (ann.)"=calculate(x, stdev, ann=xtsAttributes(x)$ann))
   out = list(performance=performance)
-
-  if(!is.null(benchmarks)){
-    correlations = NULL
-    for(b in benchmarks){
-      corr = t(cor(x, x[, b], use="pairwise.complete.obs"))
-      corr[,b] = NA
-      rownames(corr) = paste("Correl w", b)
-      correlations = rbind(correlations, corr)
-    }
-    out = c(out, list(correlations=correlations))
-  }
 
   if(!is.null(benchmarks) & length(assets)==1){
 
@@ -72,37 +61,16 @@ summary.returns <- function(x, weights=NULL, trailing=NULL) {
 
 }
 
-# portfolio(r, weights=c(VTI=0.5, ))
+cor <- function(x, ...) UseMethod("cor")
 
-capm <- function(x, ...) UseMethod("capm")
-
-capm.default <- function(x, benchmark, Rf=0) {
-  R = na.omit(x) - Rf
-  bpos = pmatch(benchmark, colnames(R))
-  model.lm = lm(R[, -bpos] ~ R[, bpos], R)
-  alpha = coef(model.lm)[[1]]
-  beta = coef(model.lm)[[2]]
-  list(alpha=alpha, beta=beta)
+cor.default <- function(x, y = NULL, use = "everything",
+                               method = c("pearson", "kendall", "spearman")){
+  stats::cor(x, y, use, method)
 }
 
-capm.returns <- function(x, Rf=0) {
-
-  R = na.omit(x) - Rf
-  benchmarks = xtsAttributes(x)$benchmarks
-  asset = setdiff(colnames(x), benchmarks)[1]
-
-  out = sapply(benchmarks, function(benchmark){
-    bpos = pmatch(benchmark, colnames(R))
-    apos = pmatch(asset, colnames(R))
-    model.lm = lm(R[, apos] ~ R[, bpos], R)
-    alpha = coef(model.lm)[[1]]
-    beta = coef(model.lm)[[2]]
-    list(alpha=alpha, beta=beta)
-  })
-
-  list(alpha=unlist(out["alpha",]), beta=unlist(out["beta",]))
+cor.returns <- function(x, use = "pairwise.complete.obs", method="pearson") {
+  stats::cor(x, use=use, method=method)
 }
-
 
 #   calcAlpha = function(annualize=T) {
 #     # TODO(dk): finalize Returns.alpha. Signature: benchmark data.table, Rf data.table

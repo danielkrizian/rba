@@ -1,38 +1,131 @@
+metric_label <- function(FUN, limit) {
+  #TODO: limit not yet implemented
+  
+  metric.labels = c(sd="Vol", 
+                    performance="Return")
+  label = as.character(metric.labels[FUN][1])
+  if(is.na(label))
+    label = FUN
+  return(label)
+}
+
+
+
+
+annualized <- function(x) {
+  structure(x, name=paste0("Ann. ", attr(x, "name")), class=c("annualized", class(x)))
+}
+
+trailing <- function(x, ...) UseMethod("trailing")
+
+trailing.default <- function(x, period) {
+  l = index(x)[length(index(x))]
+  out = switch(tolower(period), 
+               "mtd" = x[paste(as.Date(cut(l,"month")) - 1, "::")],
+               "qtd" = x[paste(as.Date(cut(l,"quarter")) - 1, "::")],
+               "ytd" = x[paste(as.Date(cut(l,"year")) - 1, "::")],
+               "l12m"= x[paste(as.Date(l) - months(12), "::")],
+               xts:::last.xts(x, n=period))
+  structure(out, name=paste0(period, ifelse(is.null(attr(x, "name")), "", attr(x, "name"))),
+            class=c("trailing", class(out)))
+  #TODO: xts:::last.xts(x, "3 weeks") doesn't work for monthly data. Employ own
+  #version of last
+}
+
+# TODO: make calculate dispatch on both string and symbol representation of function
+#   if(is.character(substitute(FUN)))
+#     if(existsFunction(FUN))
+#       FUN <- match.fun(FUN)
+calculate <- function(x, FUN, ...) {
+  UseMethod("calculate", x)
+}
+
+# returns single metric for each column. Takes care of leading NAs
+calculate.default = function(x, FUN, ...) {
+  FUNC = match.fun(FUN)
+  out = vapply(x, function(col, ...) {
+    FUNC(col[xts:::naCheck(col)$nonNA], ...)
+  }, FUN.VALUE = numeric(1), ...=...)
+  structure(out, name = metric_label(FUN))
+}
+
+
+calculate.rolling <- function(x, FUN, ...) {
+  xtsrunapply(x, FUN, ...)
+} 
+
+calculate.annualized = function(x, FUN, ...) {
+  FUN.ann <- paste(FUN, "ann", sep=".")
+  FUNC = if(existsFunction(FUN.ann)) match.fun(FUN.ann) else match.fun(FUN)
+  ann = xtsAttributes(x)$ann
+  if(existsFunction(FUN.ann))
+    out = vapply(x, function(col, ...) {
+      FUNC(col[xts:::naCheck(col)$nonNA], ann=ann, ...)
+    }, FUN.VALUE = numeric(1), ...=...)
+  else {
+    out = vapply(x, function(col, ...) {
+      FUNC(col[xts:::naCheck(col)$nonNA], ...)
+    }, FUN.VALUE = numeric(1), ...=...)
+    out = ann * out
+  }
+  out = list(out)
+  names(out) = paste("Ann.", metric_label(FUN))
+  return(out)
+}
+
+calculate.trailing = function(x, FUN, ...) {
+  out = calculate.default(x, FUN, ...)
+  out = list(out)
+  names(out) = paste(attr(x, "name"), names(out))
+  out
+}
 
 
 #### PERFORMANCE ####
 
-cagr <- function(value, n, base=100, ann=252) {
-  (value/base)^(ann / n) - 1
+# cagr <- function(value, n, base=100, ann=252) {
+#   (value/base)^(ann / n) - 1
+# }
+# 
+# twr <- function(value, base=100) {
+#   value/base
+# }
+
+compound <- function(x) prod(1+x)
+
+performance <- function(x) {
+  compound(x) - 1
 }
 
-twr <- function(value, base=100) {
-  value/base
+performance.ann <- function(x, ann) {
+  compound(x)^(ann/length(x)) - 1
 }
 
-cumulative <- function(x, compound=T) {
-  if(compound)
-    prod(1+x) - 1
-  else
-    sum(x)
-}
+#### PERFORMANCE RELATIVE (CAPM) ####
 
-annualized <- function(x, ann=12, compound=F) {
-  base = ifelse(compound, 1, 0)
-  scaleFUN = if(compound) `^` else `*`
-  ann.factor = ann/length(x)
-  scaleFUN ( cumulative(x, compound) + base , ann.factor) - base
+capm <- function(x, ...) UseMethod("capm")
+
+capm.returns <- function(x, Rf=0) {
+  R = na.omit(x) - Rf
+  benchmarks = xtsAttributes(x)$benchmarks
+  assets = setdiff(colnames(x), benchmarks)
+  
+  out = sapply(benchmarks, function(benchmark){
+    browser()
+    bpos = pmatch(benchmark, colnames(R))
+    apos = pmatch(assets, colnames(R))
+    model.lm = lm(R[, apos] ~ R[, bpos], R)
+    alpha = coef(model.lm)[[1]]
+    beta = coef(model.lm)[[2]]
+    list(Alpha=alpha, Beta=beta)
+  })
+  
+  list(Alpha=unlist(out["Alpha",]), beta=unlist(out["Beta",]))
 }
 
 ##### VOLATILITY ####################
 
-sigma <- volatility <- vol <- std.default <- stdev <- StDev <- function(x, ann=NULL) {
-
-  out = sd(x)
-  if(!is.null(ann))
-    out = sqrt(ann) * out
-  out
-}
+sd.ann <- function(x, ann, ...) sqrt(ann) * sd(x, ...)
 
 
 tr <- truerange <- TR <- function(hi, lo, cl) {

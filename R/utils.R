@@ -4,12 +4,7 @@ xtsrunapply <- function(x, FUN, ...) {
   "[<-"(x, , vapply(x, FUN, FUN.VALUE = numeric(nrow(x)), ...=...))
 }
 
-# returns single metric for each column. Takes care of leading NAs
-summary.xts = function(x, FUN, ...) {
-  vapply(x, function(col, ...) {
-    FUN(col[xts:::naCheck(col)$nonNA], ...)
-  }, FUN.VALUE = numeric(1), ...=...)
-}
+
 
 msapply <- function(...) {
   arglist <- match.call(expand.dots = FALSE)$...

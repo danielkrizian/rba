@@ -23,12 +23,25 @@ p = to.monthly(p)
 # Monthly returns from OHLCV bars, calculated from Close to Close by default
 # R = ohlc(OHLCV)$monthly()$returns()
 
+do.call("cbind",c(
+calculate(trailing(r, "mtd"), "performance"),
+calculate(trailing(r, "qtd"), "performance"),
+calculate(trailing(r, "ytd"), "performance"),
+calculate(trailing(r, "l12m"), "performance")))
+
+cor(r)
+capm(trailing(r, "l12m"))
+
+calculate(annualized(trailing(r, "l12m")), "sd")
+capm(annualized(trailing(r, "l12m")))
+
+cor(r)
 summary(r)
+
+calculate(annualized(trailing(r, "mtd")), "performance")
 
 
 portf = portfolio(r, weights=c(VTI=0.5, DBC=0.5))
 summary(portf)
 
-# trailing.returns()
-# rolling.returns()
-# r %>% monthly %>% trailing %>% annualized %>% return
+# capm(trailing(r, "l12m"))
