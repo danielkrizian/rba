@@ -6,8 +6,32 @@ make_returns <- function(x, na.pad = T) {
   return(pch)
 }
 
+#' Detect returns data
+#'
+#' Returns TRUE/FALSE, with AIC of the distribution fit as an attribute
+#' Stub only, TODO: finalize
+like.returns <- function(x){
+  if(!is.numeric(x))
+    return(FALSE)
+  
+  library(MASS)
+  normal = fitdistr(x, "normal")
+  #   fitdistrplus::descdist(x, graph=F)
+  
+  stats::AIC(normal) < 300
+  # fit = normal$estimate
+  # as.logical(abs(fit["mean"]) < 1 & abs(fit["sd"])<5* abs(fit["mean"]))
+}
+
 returns <- function(x, benchmarks=NULL) {
-  ann = periodicity(as.xts(x))$frequency/60/60/24*12
+  scale = periodicity(as.xts(x))$scale
+  ann = switch(scale, 
+               "yearly"=1,
+               "quarterly"=4,
+               "monthly"=12,
+               "weekly"=52,
+               "daily"=252,
+               "hourly"=252*8) # TODO: ann value for hourly data
   assets = setdiff(colnames(x), benchmarks)
   if(!is.null(benchmarks))
     x = x[,c(assets, benchmarks)] # put benchmarks to the end
@@ -17,7 +41,8 @@ returns <- function(x, benchmarks=NULL) {
 as.returns <- function(x, ...) UseMethod("as.returns")
 
 as.returns.data.frame <- function(x, ...) {
-  x = .as.xts.data.table(x)
+  lr = unlist(lapply(x, function(col) like.returns(col)))
+  x = .as.xts.data.table(x, val.col=names(lr[lr]) )
   returns(x, ...)
 }
 
@@ -73,10 +98,12 @@ cor.returns <- function(x, all=FALSE, use = "pairwise.complete.obs", method="pea
   out = stats::cor(x, use=use, method=method)
   if(!all) {
     benchmarks = xtsAttributes(x)$benchmarks
-    for(b in match(benchmarks, colnames(x)))
-      out[b, b] = NA
-
-    out = out[benchmarks, ]
+    if(!is.null(benchmarks)){
+      for(b in match(benchmarks, colnames(x)))
+        out[b, b] = NA
+      
+      out = out[benchmarks, ]
+    }
   }
     out
 }

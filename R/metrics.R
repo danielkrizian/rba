@@ -18,9 +18,9 @@ trailing <- function(x, ...) UseMethod("trailing")
 trailing.default <- function(x, period) {
   l = index(x)[length(index(x))]
   out = switch(tolower(period),
-               "mtd" = x[paste(as.Date(cut(l,"month")) - 1, "::")],
-               "qtd" = x[paste(as.Date(cut(l,"quarter")) - 1, "::")],
-               "ytd" = x[paste(as.Date(cut(l,"year")) - 1, "::")],
+               "mtd" = x[paste(as.Date(cut(l,"month")), "::")],
+               "qtd" = x[paste(as.Date(cut(l,"quarter")), "::")],
+               "ytd" = x[paste(as.Date(cut(l,"year")), "::")],
                "l12m"= x[paste(as.Date(l) - months(12), "::")],
                xts:::last.xts(x, n=period))
   structure(out, name=paste0(period, ifelse(is.null(attr(x, "name")), "", attr(x, "name"))),
@@ -41,7 +41,10 @@ calculate <- function(x, FUN, ...) {
 calculate.default = function(x, FUN, ...) {
   FUNC = match.fun(FUN)
   out = vapply(x, function(col, ...) {
-    FUNC(col[xts:::naCheck(col)$nonNA], ...)
+    nonNA = xts:::naCheck(col)$nonNA # bug in naCheck for col=NA therefore check
+    if (nonNA[min(length(nonNA),2)]<nonNA[1])
+      return(NA)
+    FUNC(col[nonNA], ...)
   }, FUN.VALUE = numeric(1), ...=...)
   structure(out, name = metric_label(FUN))
 }

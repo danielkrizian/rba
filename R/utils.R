@@ -84,31 +84,26 @@ detect_cols = function(data){
   return(list(id.col=id.col, time.col=time.col, val.col=val.col))
 }
 
-.as.xts.data.table = function(x){
+.as.xts.data.table = function(x, val.col){
   cols = detect_cols(x)
   id.col = cols$id.col[1]
   time.col = cols$time.col[1]
-  val.col = cols$val.col
+  if(missing(val.col))
+    val.col = cols$val.col
   use.cols = c(id.col, time.col, val.col)
   if(!is.null(id.col)) {
     x = dcast.data.table(x[, use.cols, with=FALSE],
                          formula = as.formula(paste0(time.col, "~",
-                                                     id.col )))
+                                                     id.col )),
+                         value.var=val.col)
     message("Tall dataset converted to wide format.")
+    order.by = as.POSIXct(x[[time.col]])
+    core.data = x[, which(!grepl(time.col, colnames(x))), with=FALSE]
+    out = xts(core.data,  order.by=order.by)
+  } else {
+    order.by = as.POSIXct(x[[time.col]])
+    out = xts(x = x[, val.col, with=FALSE],  order.by=order.by)
   }
-  order.by = as.POSIXct(x[[time.col]])
-  out = xts(x = x[, val.col, with=FALSE],  order.by=order.by)
+
   return(out)
-}
-
-
-#' Detect returns data
-#'
-#' Returns TRUE/FALSE, with AIC of the distribution fit as an attribute
-#' Stub only, TODO: finalize
-like.returns <- function(x){
-  library(MASS)
-  fitdistr(x$Performance, "normal")
-  descdist(x$Performance)
-  structure(TRUE, AIC=1)
 }

@@ -1,4 +1,11 @@
 library(R6); library(data.table); library(xts)
+source('W:/Applications/Development/R/rba/R/utils.R')
+source('W:/Applications/Development/R/rba/R/metrics.R')
+source('W:/Applications/Development/R/rba/R/.Prices.R')
+source('W:/Applications/Development/R/rba/R/.Returns.R')
+source('W:/Applications/Development/R/rba/R/to.period.R')
+source('W:/Applications/Development/R/rba/R/portfolio.R')
+
 Sys.setenv(TZ="UTC") # options("xts_check_TZ"). print.xts causes xts:::check.TZ
 OHLCV = readRDS("data/OHLCV.rds")
 PRICES_wide = dcast.data.table(OHLCV[,list(Instrument, Date ,Close)],
