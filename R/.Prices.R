@@ -15,7 +15,18 @@ cumProd <- function(x, base) {
 #'
 
 prices <- function(x, benchmarks=NULL) {
-  ann = periodicity(as.xts(x))$frequency/60/60/24*12
+  scale = periodicity(as.xts(x))$scale
+  ann = switch(scale,
+               "yearly"=1,
+               "quarterly"=4,
+               "monthly"=12,
+               "weekly"=52,
+               "daily"=252,
+               "hourly"=252*8) # TODO: ann value for hourly data
+
+  # fill in non-leading NAs with previous values
+  x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
+
   structure(x, class=c("prices", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
 }
 

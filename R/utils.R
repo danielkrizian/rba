@@ -76,7 +76,7 @@ detect_cols = function(data){
   id.col = get_rated_col(data,
                          - istimebased + inkey + ischar + isfac + 0.5*isinteger
                          , min=1)
-  time.col = get_rated_col(data, inkey + istimebased)
+  time.col = get_rated_col(data, inkey + 2*istimebased)
   val.col = get_rated_col(data,
                           score= -inkey - istimebased - ischar +
                             isnumeric + 5*isreturn)
