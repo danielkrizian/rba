@@ -26,7 +26,7 @@ prices <- function(x, benchmarks=NULL) {
   
   # fill in non-leading NAs with previous values
   x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
-  
+
   structure(x, class=c("prices", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
 }
 

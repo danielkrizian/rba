@@ -13,20 +13,20 @@ make_returns <- function(x, na.pad = T) {
 like.returns <- function(x){
   if(!is.numeric(x))
     return(FALSE)
-  
+
   library(MASS)
   normal = fitdistr(x, "normal")
   #   fitdistrplus::descdist(x, graph=F)
-  
+
   stats::AIC(normal) < 300
   # fit = normal$estimate
   # as.logical(abs(fit["mean"]) < 1 & abs(fit["sd"])<5* abs(fit["mean"]))
 }
 
-# TODO: implement checking 
+# TODO: implement checking
 returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
   scale = periodicity(as.xts(x))$scale
-  ann = switch(scale, 
+  ann = switch(scale,
                "yearly"=1,
                "quarterly"=4,
                "monthly"=12,
@@ -118,7 +118,7 @@ cor.returns <- function(x, all=FALSE, use = "pairwise.complete.obs", method="pea
     if(!is.null(benchmarks)){
       for(b in match(benchmarks, colnames(x)))
         out[b, b] = NA
-      
+
       out = out[benchmarks, ]
     }
   }
