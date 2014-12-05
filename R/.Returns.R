@@ -25,6 +25,7 @@ like.returns <- function(x){
 
 # TODO: implement checking
 returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
+
   scale = periodicity(as.xts(x))$scale
   ann = switch(scale,
                "yearly"=1,
@@ -33,20 +34,21 @@ returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
                "weekly"=52,
                "daily"=252,
                "hourly"=252*8) # TODO: ann value for hourly data
-  assets = setdiff(colnames(x), benchmarks)
-  if(!is.null(benchmarks))
-    x = x[,c(assets, benchmarks)] # put benchmarks to the end
-  
+    
   # fill in non-leading NAs with zero
   x = xtsrunapply(x, function(col) na.fill(col, list(NA, 0, 0)))
   # alternative: in xts:::naCheck, use 
   # .Call("naCheck", x, FALSE, PACKAGE = "xts")
   # na.fill(nonleading, fill=0)
   
-  structure(x, class=c("returns", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
+  obj = structure(x, class=c("returns", "xts", "zoo"), ann=ann)
+  obj = set_benchmarks(obj, benchmarks)
+  return(obj)
 }
 
 as.returns <- function(x, ...) UseMethod("as.returns")
+
+as.returns.returns <- function(x, ...) x
 
 as.returns.data.frame <- function(x, ...) {
   lr = unlist(lapply(x, function(col) like.returns(col)))

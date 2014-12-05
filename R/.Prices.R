@@ -27,10 +27,32 @@ prices <- function(x, benchmarks=NULL) {
   # fill in non-leading NAs with previous values
   x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
 
-  structure(x, class=c("prices", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
+  obj = structure(x, class=c("prices", "xts", "zoo"), ann=ann)
+  obj = set_benchmarks(obj, benchmarks)
+  return(obj)
+  
+}
+
+set_benchmarks <- function(x, ...) {
+  if(!inherits(x, "xts")) stop("Cannot set benchmarks for non-xts objects")
+  UseMethod("as.prices")
+}
+
+set_benchmarks.default <- function(x, benchmarks) {
+  benchmarks = c(xtsAttributes(R)$benchmarks, benchmarks)
+  if(!is.null(benchmarks)) {
+    assets = setdiff(colnames(x), benchmarks)
+    if(!all(benchmarks %in% names(x)))
+      stop("Some of the benchmark names not in the data.")
+    x = x[,c(assets, benchmarks)] # put benchmarks to the end
+    xtsAttributes(x) <- list(benchmarks=benchmarks)
+  }
+  return(x)
 }
 
 as.prices <- function(x, ...) UseMethod("as.prices")
+
+as.prices.prices <- function(x, ...) x
 
 as.prices.data.frame <- function(x, ...) {
   x = .as.xts.data.table(x)
