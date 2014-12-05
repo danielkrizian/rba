@@ -23,7 +23,8 @@ like.returns <- function(x){
   # as.logical(abs(fit["mean"]) < 1 & abs(fit["sd"])<5* abs(fit["mean"]))
 }
 
-returns <- function(x, benchmarks=NULL) {
+# TODO: implement checking 
+returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
   scale = periodicity(as.xts(x))$scale
   ann = switch(scale, 
                "yearly"=1,
@@ -35,6 +36,13 @@ returns <- function(x, benchmarks=NULL) {
   assets = setdiff(colnames(x), benchmarks)
   if(!is.null(benchmarks))
     x = x[,c(assets, benchmarks)] # put benchmarks to the end
+  
+  # fill in non-leading NAs with zero
+  x = xtsrunapply(x, function(col) na.fill(col, list(NA, 0, 0)))
+  # alternative: in xts:::naCheck, use 
+  # .Call("naCheck", x, FALSE, PACKAGE = "xts")
+  # na.fill(nonleading, fill=0)
+  
   structure(x, class=c("returns", "xts", "zoo"), ann=ann, benchmarks=benchmarks)
 }
 
@@ -52,11 +60,20 @@ as.returns.data.frame <- function(x, ...) {
 #' @rdname returns
 #' @export returns
 as.returns.prices <- function(x, na.pad = TRUE, ...) {
-  r = diff.xts(x, na.pad=na.pad)/tail(x, -1)
+  r = diff.xts(x, na.pad=na.pad)/lag.xts(x, na.pad=T)
+  colnames(r) = colnames(x) # xts bug, see http://stackoverflow.com/questions/14420332/is-there-a-way-to-get-merge-xts-to-leave-names-unchanged
   r = returns(r, ...)
   xtsAttributes(r) = xtsAttributes(x, user=T)
   r
 }
+
+print.returns <- function(x) {
+  print(round(x*100, 2))
+}
+
+# print.trailing <- function(x) {
+#   print(round(x*100, 2))
+# }
 
 summary.returns <- function(x, weights=NULL, trailing=NULL) {
 
