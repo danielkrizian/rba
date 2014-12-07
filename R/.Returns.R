@@ -15,7 +15,7 @@ like.returns <- function(x){
     return(FALSE)
 
   library(MASS)
-  normal = fitdistr(x, "normal")
+  normal = fitdistr(na.omit(x), "normal")
   #   fitdistrplus::descdist(x, graph=F)
 
   stats::AIC(normal) < 300
@@ -34,13 +34,13 @@ returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
                "weekly"=52,
                "daily"=252,
                "hourly"=252*8) # TODO: ann value for hourly data
-    
+
   # fill in non-leading NAs with zero
   x = xtsrunapply(x, function(col) na.fill(col, list(NA, 0, 0)))
-  # alternative: in xts:::naCheck, use 
+  # alternative: in xts:::naCheck, use
   # .Call("naCheck", x, FALSE, PACKAGE = "xts")
   # na.fill(nonleading, fill=0)
-  
+
   obj = structure(x, class=c("returns", "xts", "zoo"), ann=ann)
   obj = set_benchmarks(obj, benchmarks)
   return(obj)

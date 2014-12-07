@@ -16,30 +16,30 @@ cumProd <- function(x, base) {
 
 prices <- function(x, benchmarks=NULL) {
   scale = periodicity(as.xts(x))$scale
-  ann = switch(scale, 
+  ann = switch(scale,
                "yearly"=1,
                "quarterly"=4,
                "monthly"=12,
                "weekly"=52,
                "daily"=252,
                "hourly"=252*8) # TODO: ann value for hourly data
-  
+
   # fill in non-leading NAs with previous values
   x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
 
   obj = structure(x, class=c("prices", "xts", "zoo"), ann=ann)
   obj = set_benchmarks(obj, benchmarks)
   return(obj)
-  
+
 }
 
 set_benchmarks <- function(x, ...) {
   if(!inherits(x, "xts")) stop("Cannot set benchmarks for non-xts objects")
-  UseMethod("as.prices")
+  UseMethod("set_benchmarks")
 }
 
 set_benchmarks.default <- function(x, benchmarks) {
-  benchmarks = c(xtsAttributes(R)$benchmarks, benchmarks)
+  benchmarks = c(xtsAttributes(x)$benchmarks, benchmarks)
   if(!is.null(benchmarks)) {
     assets = setdiff(colnames(x), benchmarks)
     if(!all(benchmarks %in% names(x)))
