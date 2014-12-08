@@ -25,7 +25,8 @@ prices <- function(x, benchmarks=NULL) {
                "hourly"=252*8) # TODO: ann value for hourly data
 
   # fill in non-leading NAs with previous values
-  x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
+  # x = xtsrunapply(x, function(col) na.locf(col, na.rm=F))
+  x = na.locf(x, na.rm=F) # should work without xtsrunapply
 
   obj = structure(x, class=c("prices", "xts", "zoo"), ann=ann)
   obj = set_benchmarks(obj, benchmarks)
