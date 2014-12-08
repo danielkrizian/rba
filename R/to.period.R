@@ -1,8 +1,10 @@
 # custom function based on xts::to.period
 # changes: na.omit(x) only if all(is.na(x)) - was any(is.na(x))
+# xx = xts:::.drop.time(xx), see http://stackoverflow.com/questions/10264273/r-cbind-xts-objects-results-in-added-duplicate-row
 to.period = function (x, period = "months", k = 1, indexAt = NULL, name = NULL,
                       OHLC = TRUE, ...)
 {
+  
   if (missing(name))
     name <- deparse(substitute(x))
   xo <- x
@@ -35,8 +37,10 @@ to.period = function (x, period = "months", k = 1, indexAt = NULL, name = NULL,
                   is.OHLC(x), index_at, cnames, PACKAGE = "xts")
   }
   if (!is.null(indexAt)) {
-    if (indexAt == "yearmon" || indexAt == "yearqtr")
+    if (indexAt == "yearmon" || indexAt == "yearqtr") {
       indexClass(xx) <- indexAt
+      xx = xts:::.drop.time(xx)
+    }
     if (indexAt == "firstof") {
       ix <- as.POSIXlt(c(.index(xx)), tz = indexTZ(xx))
       if (period %in% c("years", "months", "quarters",
@@ -67,13 +71,13 @@ to.monthly.xts <- function(x, ...) {
 
 to.monthly.returns <- function(x) {
   pr = as.prices(x)
-  pr = to.monthly(pr, indexAt='endof', name=NULL, OHLC=FALSE)
+  pr = to.monthly(pr, indexAt='yearmon', name=NULL, drop.time=TRUE, OHLC=FALSE)
   xtsAttributes(pr) <- list(ann=12)
   as.returns(pr)
 }
 
 to.monthly.prices <- function(x, ...){
-  pr = to.period(x, period="months", indexAt = "endof", OHLC = FALSE)
+  pr = to.period(x, period="months", indexAt = "yearmon", OHLC = FALSE)
   xtsAttributes(pr) <- list(ann=12)
   pr
 }

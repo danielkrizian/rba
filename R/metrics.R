@@ -18,9 +18,9 @@ trailing <- function(x, ...) UseMethod("trailing")
 trailing.default <- function(x, period) {
   l = index(x)[length(index(x))]
   out = switch(tolower(period),
-               "mtd" = x[paste(as.Date(cut(l,"month")), "::")],
-               "qtd" = x[paste(as.Date(cut(l,"quarter")), "::")],
-               "ytd" = x[paste(as.Date(cut(l,"year")), "::")],
+               "mtd" = x[paste(cut(as.Date(l),"month"), "::")],
+               "qtd" = x[paste(cut(as.Date(l),"quarter"), "::")],
+               "ytd" = x[paste(cut(as.Date(l),"year"), "::")],
                "l12m"= x[paste(as.Date(l) - months(12), "::")],
                xts:::last.xts(x, n=period))
   structure(out, name=paste0(period, ifelse(is.null(attr(x, "name")), "", attr(x, "name"))),

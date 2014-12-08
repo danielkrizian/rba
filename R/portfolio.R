@@ -42,9 +42,12 @@ portfolio.returns <- function(x, weights, name="Portfolio") {
 
 portfolio.returns <- function (x, weights, rebalance=T, na.alloc=F, label="Portfolio") {
 
-  assets = x[, .select.assets(x, weights)]
+  select= .select.assets(x, weights)
+  assets = x[, select]
+  weights = weights[select]
+  
   if(rebalance & is.vector(weights) & !na.alloc) {
-    assets[,1] = rowSums(assets * weights, na.rm = F)
+    assets[,1] = rowSums(assets * weights, na.rm = T) # should be na.rm=F. TODO: na.alloc
     pfolio = assets[, 1]
     names(pfolio) = label
     pfolio = returns(merge(pfolio, x[, xtsAttributes(x)$benchmarks]))

@@ -48,7 +48,9 @@ returns <- function(x, benchmarks=NULL, na.warn=FALSE) {
 
 as.returns <- function(x, ...) UseMethod("as.returns")
 
-as.returns.returns <- function(x, ...) x
+as.returns.returns <- function(x, benchmarks=NULL) {
+  set_benchmarks(x, benchmarks)
+}
 
 as.returns.data.frame <- function(x, ...) {
   lr = unlist(lapply(x, function(col) like.returns(col)))
@@ -68,6 +70,15 @@ as.returns.prices <- function(x, na.pad = TRUE, ...) {
   xtsAttributes(r) = xtsAttributes(x, user=T)
   r
 }
+
+# merge.returns <- function(...) {
+#   dots = list(...)
+#   # TODO: handle duplicates
+#   browser()
+#   benchmarks = sapply(dots, function(x) xtsAttributes(x)$benchmarks)
+#   out = merge.xts(...)
+#   names(out) = merged.names # merge.xts does check.names
+# }
 
 print.returns <- function(x) {
   print(round(x*100, 2))
