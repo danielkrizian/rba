@@ -1,7 +1,19 @@
+
+.select.assets <- function(x, weights) {
+  benchmarks = xtsAttributes(x)$benchmarks
+  assets = setdiff(names(x), benchmarks)
+  select.assets = intersect(names(weights), assets)
+  if(!length(select.assets))
+    stop("Weight names do not match any of the assets.")
+  return(select.assets)
+}
+
 #' Construct portfolio from returns
 #'
 #' portfolio(r, weights=c(VTI=0.5, ))
-portfolio <- function(x, ...) UseMethod("portfolio")
+portfolio <- function(x, ...) {
+  UseMethod("portfolio", x)
+}
 
 portfolio.returns <- function(x, weights, name="Portfolio") {
   # TODO: integrate with strategery Portfolio class
@@ -28,36 +40,44 @@ portfolio.returns <- function(x, weights, name="Portfolio") {
 
 # calculate portfolio returns with rebalancing, allowing for leading NAs
 
-portfolio.returns <- function () {
-  w <- w[assets] #align/reorder with price frame
-  names(w) <- assets
-  w <- na.fill(w,fill=0)
+portfolio.returns <- function (x, weights, rebalance=T, na.alloc=F, label="Portfolio") {
 
-  reb <- PDT[,.SD[c(1,endpoints(Date, on="years")),], by=Name][,list(Name,Date)]
-  setkey(reb,Name,Date)
-  rebalance <- copy(PDT)
-  rebalance[,Value:=NA]
-  rebalance[reb,Value:=1]
-  rebalance <- as.xts(dcast.data.table(rebalance, Date~Name))
-  P <- as.xts(dcast.data.table(PDT, Date~Name))
+  assets = x[, .select.assets(x, weights)]
+  if(rebalance & is.vector(weights) & !na.alloc) {
+    assets[,1] = rowSums(assets * weights, na.rm = F)
+    pfolio = assets[, 1]
+    names(pfolio) = label
+    pfolio = returns(merge(pfolio, x[, xtsAttributes(x)$benchmarks]))
+    return(pfolio)
+  }
+  else stop("Implement custom rebalance")
+}
+
+portfolio.prices <- function (x, weights, rebalance=T, na.alloc=F) {
+
+  stop("Portfolio from Prices and custom/subset rebalancing not implemented yet.")
+  # weights <- na.fill(weights, fill=0)
+
+  # reb <- PDT[,.SD[c(1,endpoints(Date, on="years")),], by=Name][,list(Name,Date)]
+  # setkey(reb,Name,Date)
+  # rebalance <- copy(PDT)
+  # rebalance[,Value:=NA]
+  # rebalance[reb,Value:=1]
+  # rebalance <- as.xts(dcast.data.table(rebalance, Date~Name))
 
   # weights, shares, positions
 
-  illiquid <- apply(P, 2
+  illiquid <- apply(assets, 2
                     , function(p) ifelse(is.na(p)
                                          , na.fill(p, fill=c(FALSE, TRUE, TRUE))
                                          ,FALSE))
 
-  in.universe <- !is.na(P) | illiquid
-
-  w.portf <- t(t(in.universe) * w)
+  in.universe <- !is.na(assets) | illiquid # loses xts class
+  browser()
+  w.portf <- in.universe * weights
   w.subset <- w.portf/rowSums(w.portf)
 
-  # Price used for portfolio holdings in valuation.
-  # Can be illiquid/non-market/locf-ed price. Price is locf-ed for inside NAs only
-  # (no leading, no trailing)
-  P.val <- na.locf( P, na.rm = FALSE)
-  leverage <- rowSums(P.val, na.rm=T)/P.val
+  leverage <- rowSums(P.val, na.rm=T) / P.val
   # if(length(rebalance)) {
   leverage[] <- ifelse(is.na(rebalance),NA,leverage)
   leverage <- na.locf(leverage, na.rm=F)
