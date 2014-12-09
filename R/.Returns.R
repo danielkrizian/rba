@@ -143,6 +143,10 @@ cor.returns <- function(x, all=FALSE, use = "pairwise.complete.obs", method="pea
 
 capm <- function(x, ...) UseMethod("capm")
 
+capm.default <- function(x, Rf=0) {
+  capm.returns(x, Rf)
+}
+
 capm.returns <- function(x, Rf=0) {
   R = na.omit(x) - Rf
   benchmarks = xtsAttributes(x)$benchmarks

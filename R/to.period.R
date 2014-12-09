@@ -11,10 +11,10 @@ to.period = function (x, period = "months", k = 1, indexAt = NULL, name = NULL,
   x <- try.xts(x)
   if (NROW(x) == 0 || NCOL(x) == 0)
     stop(sQuote("x"), " contains no data")
-  if (all(is.na(x))) {
-    x <- na.omit(x)
-    warning("missing values removed from data")
-  }
+#   if (all(is.na(x))) {
+#     x <- na.omit(x)
+#     warning("missing values removed from data")
+#   }
   if (!OHLC) {
     xx <- x[endpoints(x, period, k), ]
   }
@@ -61,6 +61,12 @@ to.period = function (x, period = "months", k = 1, indexAt = NULL, name = NULL,
     }
   }
   reclass(xx, xo)
+}
+
+to.weekly <- function(x, ...) UseMethod("to.weekly")
+
+to.weekly.xts <- function(x, ...) {
+  xts::to.weekly(as.xts(x), ...)
 }
 
 to.monthly <- function(x, ...) UseMethod("to.monthly")
