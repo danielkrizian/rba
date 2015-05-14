@@ -69,6 +69,12 @@ to.weekly.xts <- function(x, ...) {
   xts::to.weekly(as.xts(x), ...)
 }
 
+to.weekly.prices <- function(x, ...){
+  pr = to.period(x, period="weeks", OHLC = FALSE)
+  xtsAttributes(pr) <- list(ann=52)
+  pr
+}
+
 to.monthly <- function(x, ...) UseMethod("to.monthly")
 
 to.monthly.xts <- function(x, ...) {
